@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNN Test Suite - Complex Code Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .slide-container {
+            width: 100%;
+            max-width: 1200px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+        
+        .slide {
+            min-height: 600px;
+            padding: 40px 60px;
+            display: none;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        .slide.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h1 {
+            color: #2d3748;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            border-bottom: 4px solid #11998e;
+            padding-bottom: 15px;
+        }
+        
+        h2 {
+            color: #4a5568;
+            font-size: 1.8em;
+            margin: 25px 0 15px;
+        }
+        
+        h3 {
+            color: #718096;
+            font-size: 1.3em;
+            margin: 15px 0 10px;
+        }
+        
+        p, li {
+            color: #4a5568;
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        ul {
+            margin-left: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        .diagram {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0;
+            padding: 20px;
+        }
+        
+        .architecture-box {
+            background: #f7fafc;
+            border: 2px solid #11998e;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px;
+            min-width: 200px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .arrow {
+            font-size: 2em;
+            color: #11998e;
+            margin: 0 15px;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        button {
+            background: #11998e;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(17, 153, 142, 0.4);
+        }
+        
+        button:hover {
+            background: #0e8378;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(17, 153, 142, 0.5);
+        }
+        
+        button:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .slide-counter {
+            color: #718096;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .highlight {
+            background: #fef5e7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border-left: 3px solid #f39c12;
+        }
+        
+        .folder-tree {
+            font-family: 'Courier New', monospace;
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            line-height: 1.8;
+        }
+        
+        .folder {
+            color: #e53e3e;
+            font-weight: bold;
+        }
+        
+        .file {
+            color: #3182ce;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        th {
+            background: #11998e;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f7fafc;
+        }
+        
+        .tag {
+            display: inline-block;
+            background: #edf2f7;
+            color: #4a5568;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.9em;
+            margin: 2px;
+        }
+        
+        .center {
+            text-align: center;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-counter">Slide <span id="currentSlide">1</span> / <span id="totalSlides">14</span></div>
+    
+    <div class="slide-container">
+        <!-- Slide 1: Title -->
+        <div class="slide active" id="slide1">
+            <h1>MNN Test Suite</h1>
+            <h2 class="center">Complex Test Infrastructure Visualization</h2>
+            <p class="center" style="margin-top: 50px; font-size: 1.2em; color: #718096;">
+                Comprehensive Testing Framework for Deep Learning Inference Engine
+            </p>
+            <div class="stats-grid" style="margin-top: 40px;">
+                <div class="stat-card">
+                    <div class="stat-number">~500</div>
+                    <div class="stat-label">Test Files</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">~10K</div>
+                    <div class="stat-label">Test Cases</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">~20</div>
+                    <div class="stat-label">Test Categories</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">~50</div>
+                    <div class="stat-label">Backend Targets</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: Directory Structure -->
+        <div class="slide" id="slide2">
+            <h1>Test Directory Structure</h1>
+            <h2>Organization & Components</h2>
+            <div class="folder-tree">
+                <span class="folder">test/</span><br>
+                &nbsp;&nbsp;├── <span class="file">main.cpp</span> <span class="tag">Test runner entry</span><br>
+                &nbsp;&nbsp;├── <span class="file">MNNTestSuite.cpp/.h</span> <span class="tag">Framework core</span><br>
+                &nbsp;&nbsp;├── <span class="file">TestUtils.cpp/.h/.mm</span> <span class="tag">Utilities</span><br>
+                &nbsp;&nbsp;├── <span class="file">CommonOpCreator.hpp</span> <span class="tag">Op test helper</span><br>
+                &nbsp;&nbsp;├── <span class="folder">backend/</span> <span class="tag">Backend-specific</span><br>
+                &nbsp;&nbsp;├── <span class="folder">core/</span> <span class="tag">Core component tests</span><br>
+                &nbsp;&nbsp;├── <span class="folder">cv/</span> <span class="tag">Computer vision</span><br>
+                &nbsp;&nbsp;├── <span class="folder">expr/</span> <span class="tag">Expression tests</span><br>
+                &nbsp;&nbsp;├── <span class="folder">grad/</span> <span class="tag">Gradient checks</span><br>
+                &nbsp;&nbsp;├── <span class="folder">model/</span> <span class="tag">Model loading</span><br>
+                &nbsp;&nbsp;├── <span class="folder">nn/</span> <span class="tag">Neural network ops</span><br>
+                &nbsp;&nbsp;├── <span class="folder">op/</span> <span class="tag">Operator unit tests</span><br>
+                &nbsp;&nbsp;├── <span class="folder">plugin/</span> <span class="tag">Plugin system</span><br>
+                &nbsp;&nbsp;├── <span class="folder">speed/</span> <span class="tag">Performance tests</span><br>
+                &nbsp;&nbsp;├── <span class="folder">sharedmem/</span> <span class="tag">Shared memory</span><br>
+                &nbsp;&nbsp;└── <span class="folder">clone/</span> <span class="tag">Model cloning</span>
+            </div>
+            <div style="margin-top: 25px; padding: 15px; background: #e6fffa; border-radius: 8px;">
+                <h3>Test Coverage</h3>
+                <p>The test suite covers all major MNN components: <strong>Backend CPU/GPU</strong>, <strong>Operators (100+)</strong>, <strong>Graph optimization</strong>, <strong>Memory management</strong>, and <strong>Cross-platform compatibility</strong>.</p>
+            </div>
+        </div>
+
+        <!-- Slide 3: Test Framework Core -->
+        <div class="slide" id="slide3">
+            <h1>Test Framework Architecture</h1>
+            <h2>MNNTestSuite & TestUtils</h2>
+            <div class="code-block">
+// MNNTestSuite.h - Core test infrastructure<br>
+class MNNTestSuite {<br>
+public:<br>
+&nbsp;&nbsp;static void addTestSuite(const std::string& name,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TestSuite::Creator&& creator);<br>
+&nbsp;&nbsp;static int runTestSuites();<br>
+&nbsp;&nbsp;static void setCurBackend(Backend::Info&& info);<br>
+private:<br>
+&nbsp;&nbsp;static std::map&lt;std::string, TestSuite::Creator&gt;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mSuites;<br>
+&nbsp;&nbsp;static Backend::Info mBackendInfo;<br>
+};
+            </div>
+            <div class="code-block" style="background: #2d3748; color: #e2e8f0; padding: 15px;">
+// TestUtils.h - Helper macros<br>
+#<span class="highlight">define</span> TEST_REGISTER(suite_name, test_name) \<br>
+&nbsp;&nbsp;static bool __##suite_name##_##test_name(); \<br>
+&nbsp;&nbsp;static auto __##suite_name##_##test_name##_registrar \<br>
+&nbsp;&nbsp;&nbsp;&nbsp;= MNNTestSuite::addTestSuite(#suite_name, [](){return new TestSuite(#test_name, __##suite_name##_##test_name);})<br><br>
+#<span class="highlight">define</span> <span class="highlight">ASSERT_TRUE</span>(value) if(!(value)) { return false; }<br>
+#<span class="highlight">define</span> <span class="highlight">ASSERT_FALSE</span>(value) if((value)) { return false; }<br>
+#<span class="highlight">define</span> <span class="highlight">ASSERT_EQ</span>(a, b) if((a)!=(b)) { return false; }
+            </div>
+            <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border-radius: 8px;">
+                <h3>Registration Pattern</h3>
+                <p>Tests self-register using static initializers. The framework discovers and runs all tests automatically across multiple backends.</p>
+            </div>
+        </div>
+
+        <!-- Slide 4: Test Categories Overview -->
+        <div class="slide" id="slide4">
+            <h1>Test Categories</h1>
+            <h2>20+ Specialized Test Suites</h2>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px;">
+                <div class="architecture-box">
+                    <h3>Core</h3>
+                    <ul style="text-align: left; font-size: 0.9em;">
+                        <li>Tensor tests</li>
+                        <li>Memory allocation</li>
+                        <li>Thread safety</li>
+                        <li>Resource management</li>
+                    </ul>
+                </div>
+                <div class="architecture-box">
+                    <h3>Backend</h3>
+                    <ul style="text-align: left; font-size: 0.9em;">
+                        <li>CPU execution</li>
+                        <li>OpenCL GPU</li>
+                        <li>Metal (iOS/macOS)</li>
+                        <li>Vulkan/CUDA</li>
+                    </ul>
+                </div>
+                <div class="architecture-box">
+                    <h3>NN</h3>
+                    <ul style="text-align: left; font-size: 0.9em;">
+                        <li>Conv/BN/ReLU</li>
+                        <li>LSTM/GRU</li>
+                        <li>Attention</li>
+                        <li>Transformer blocks</li>
+                    </ul>
+                </div>
+                <div class="architecture-box">
+                    <h3>CV</h3>
+                    <ul style="text-align: left; font-size: 0.9em;">
+                        <li>Image resize</li>
+                        <li>Color conversion</li>
+                        <li>NMS</li>
+                        <li>ROI pooling</li>
+                    </ul>
+                </div>
+                <div class="architecture-box">
+                    <h3>Expr</h3>
+                    <ul style="text-align: left; font-size: 0.9em;">
+                        <li>Variable/Expr</li>
+                        <li>Gradient tape</li>
+                        <li>Auto-diff</li>
+                        <li>Session API</li>
+                    </ul>
+                </div>
+                <div class="architecture-box">
+                    <h3>Speed</h3>
+                    <ul style="text-align: left; font-size: 0.9em;">
+                        <li>Inference latency</li>
+                        <li>Throughput</li>
+                        <li>Memory footprint</li>
+                        <li>Backend comparison</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Backend Testing -->
+        <div class="slide" id="slide5">
+            <h1>Backend-Specific Tests</h1>
+            <h2>Multi-Backend Validation</h2>
+            <div class="folder-tree">
+                <span class="folder">test/backend/</span><br>
+                &nbsp;&nbsp;├── <span class="file">testCPUBackend.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testOpenCLBackend.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testMetalBackend.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testVulkanBackend.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testCUABackend.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testBackend.cpp</span> <span class="tag">Common</span><br>
+                &nbsp;&nbsp;└── <span class="file">testBackendAender.cpp</span>
+            </div>
+            <div class="code-block" style="margin-top: 20px;">
+// Test pattern across backends<br>
+TEST(CPU, Conv2DBasic) {<br>
+&nbsp;&nbsp;// Create input tensor<br>
+&nbsp;&nbsp;auto input = Tensor::create({1, 3, 224, 224});<br>
+&nbsp;&nbsp;// Create operation<br>
+&nbsp;&nbsp;Conv2D conv;<br>
+&nbsp;&nbsp;conv.init(...);<br>
+&nbsp;&nbsp;// Execute on CPU backend<br>
+&nbsp;&nbsp;Backend* cpu = Backend::createBackend(Backend::CPU);<br>
+&nbsp;&nbsp;auto output = conv.onExecute(input, cpu);<br>
+&nbsp;&nbsp;// Verify output<br>
+&nbsp;&nbsp;ASSERT_EQ(output->size(), expected_size);<br>
+&nbsp;&nbsp;ASSERT_TRUE(checkTensor(output, golden_data));<br>
+}
+            </div>
+            <p style="margin-top: 15px; font-style: italic; color: #718096;">Each backend test validates: correct output, numerical precision, memory safety, and performance characteristics.</p>
+        </div>
+
+        <!-- Slide 6: Operator Tests -->
+        <div class="slide" id="slide6">
+            <h1>Operator Unit Tests</h1>
+            <h2>Comprehensive Op Coverage</h2>
+            <div class="folder-tree">
+                <span class="folder">test/op/</span><br>
+                &nbsp;&nbsp;├── <span class="file">testConvolution.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testPooling.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testActivation.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testMatrixMul.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testBatchNorm.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testPad.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testResize.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testConcat.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testSplit.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testReduce.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testSoftmax.cpp</span><br>
+                &nbsp;&nbsp;└── ... (50+ operator files)
+            </div>
+            <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border-radius: 8px;">
+                <h3>Test Coverage Metrics</h3>
+                <ul style="margin-top: 10px;">
+                    <li><strong>Convolution:</strong> stride, padding, dilation, groups</li>
+                    <li><strong>Pooling:</strong> max/avg/global, ceil/floor mode</li>
+                    <li><strong>Activation:</strong> ReLU, Sigmoid, Tanh, LeakyReLU, ELU</li>
+                    <li><strong>Normalization:</strong> BatchNorm, InstanceNorm, LayerNorm</li>
+                    <li><strong>Shape ops:</strong> Reshape, Squeeze, Unsqueeze, Transpose</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 7: CommonOpCreator Helper -->
+        <div class="slide" id="slide7">
+            <h1>CommonOpCreator.hpp</h1>
+            <h2>Test Code Generation Utility</h2>
+            <div class="code-block">
+// Factory pattern for creating test tensors and ops<br>
+<span class="highlight">namespace</span> CommonOPCreater {<br>
+&nbsp;&nbsp;Tensor* createTensor(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;const std::vector<int>& shape,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Halide::Type type = halide_type_of<float>(),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;float min = -1.0f,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;float max = 1.0f);<br><br>
+&nbsp;&nbsp;Convolution2D* <span class="highlight">createConv</span>(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;int inputC, int outputC,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;int kernelH, int kernelW,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;int stride = 1, int pad = 0,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;int group = 1, bool relu = false);<br><br>
+&nbsp;&nbsp;BatchNorm* <span class="highlight">createBatchNorm</span>(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;int channels, float epsilon = 1e-5);<br><br>
+&nbsp;&nbsp;Pool* <span class="highlight">createPool</span>(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;PoolType type, int kernelH, int kernelW,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;int stride = 2, int pad = 0);<br>
+}
+            </div>
+            <div class="code-block" style="margin-top: 15px;">
+// Usage in test<br>
+TEST(Conv, BasicTest) {<br>
+&nbsp;&nbsp;auto tensor = CommonOPCreater::createTensor({1, 3, 224, 224});<br>
+&nbsp;&nbsp;auto conv = CommonOPCreater::createConv(3, 64, 3, 3, 1, 1);<br>
+&nbsp;&nbsp;// ... run and assert<br>
+}
+            </div>
+            <div style="margin-top: 15px; padding: 15px; background: #e6fffa; border-radius: 8px;">
+                <h3>Purpose</h3>
+                <p>Reduces boilerplate code, ensures consistent test setup, and centralizes common parameter combinations. Makes adding new tests faster and less error-prone.</p>
+            </div>
+        </div>
+
+        <!-- Slide 8: Model Tests -->
+        <div class="slide" id="slide8">
+            <h1>Model Loading & Conversion Tests</h1>
+            <h2>End-to-End Model Validation</h2>
+            <div class="folder-tree">
+                <span class="folder">test/model/</span><br>
+                &nbsp;&nbsp;├── <span class="file">testONNXLoad.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testTensorflowLoad.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testCaffeLoad.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testMNNLoad.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testTorchLoad.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testModel.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testNCHW.cpp</span><br>
+                &nbsp;&nbsp;└── <span class="file">testDynamicDestroy.cpp</span>
+            </div>
+            <div class="code-block" style="margin-top: 20px;">
+// Verify model conversion accuracy<br>
+TEST(Model, ONNXResNet50) {<br>
+&nbsp;&nbsp;// Load original ONNX model<br>
+&nbsp;&nbsp;Interpreter* onnx_interp = ONNXModelLoader::load("resnet50.onnx");<br>
+&nbsp;&nbsp;// Load converted MNN model<br>
+&nbsp;&nbsp;Interpreter* mnn_interp = Interpreter::createFromFile("resnet50.mnn");<br>
+&nbsp;&nbsp;// Run inference on sample input<br>
+&nbsp;&nbsp;Tensor* input = Tensor::create({1, 3, 224, 224});<br>
+&nbsp;&nbsp;fillRandom(input);<br>
+&nbsp;&nbsp;auto output_onnx = onnx_interp->runSession({input})[0];<br>
+&nbsp;&nbsp;auto output_mnn = mnn_interp->runSession({input})[0];<br>
+&nbsp;&nbsp;// Compare outputs<br>
+&nbsp;&nbsp;ASSERT_LT(diffPercentage(output_onnx, output_mnn), 0.001);<br>
+}
+            </div>
+            <p style="margin-top: 15px; color: #718096;">Tests ensure <strong>numerical equivalence</strong> across frameworks and validate <strong>model conversion fidelity</strong>.</p>
+        </div>
+
+        <!-- Slide 9: CV & NN Tests -->
+        <div class="slide" id="slide9">
+            <h1>Computer Vision & Neural Network Tests</h1>
+            <h2>Specialized Domain Testing</h2>
+            <div style="display: flex; gap: 20px; margin-top: 20px;">
+                <div class="architecture-box" style="flex: 1;">
+                    <h3>CV Tests (test/cv/)</h3>
+                    <ul style="text-align: left; font-size: 0.9em;">
+                        <li>Image preprocessing</li>
+                        <li>Color space conversions</li>
+                        <li>Image resizing algorithms</li>
+                        <li>Region proposals (ROI)</li>
+                        <li>Non-maximum suppression</li>
+                        <li>Image crop & pad</li>
+                    </ul>
+                </div>
+                <div class="architecture-box" style="flex: 1;">
+                    <h3>NN Tests (test/nn/)</h3>
+                    <ul style="text-align: left; font-size: 0.9em;">
+                        <li>Linear/FC layers</li>
+                        <li>Convolution variants</li>
+                        <li>Normalization layers</li>
+                        <li>Dropout & regularization</li>
+                        <li>Embedding & lookup</li>
+                        <li>Attention mechanisms</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="code-block" style="margin-top: 20px;">
+// Example: CV resize test with multiple modes<br>
+TEST(CV, ResizeAllModes) {<br>
+&nbsp;&nbsp;Tensor input = randomTensor({1, 3, 128, 128});<br>
+&nbsp;&nbsp;for (auto mode : {NEAREST, BILINEAR, BICUBIC}) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;auto output = resize(input, {256, 256}, mode);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ASSERT_EQ(output->shape(), std::vector<int>({1, 3, 256, 256}));<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ASSERT_NEAR(mean(output), expected_means[mode], 1e-5);<br>
+&nbsp;&nbsp;}<br>
+}
+            </div>
+        </div>
+
+        <!-- Slide 10: Expression & Gradient Tests -->
+        <div class="slide" id="slide10">
+            <h1>Expression Engine & Gradient Tests</h1>
+            <h2>Automatic Differentiation Validation</h2>
+            <div class="folder-tree">
+                <span class="folder">test/expr/</span><br>
+                &nbsp;&nbsp;├── <span class="file">testExpr.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testGradient.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testVariable.cpp</span><br>
+                &nbsp;&nbsp;├── <span class="file">testSession.cpp</span><br>
+                &nbsp;&nbsp;└── <span class="file">testCompute.cpp</span><br>
+                <span class="folder">test/grad/</span><br>
+                &nbsp;&nbsp;└── <span class="file">gradientTest.cpp</span> <span class="tag">Numerical gradient check</span>
+            </div>
+            <div class="code-block">
+// Gradient checking: analytic vs numerical<br>
+TEST(Gradient, Conv2DGradient) {<br>
+&nbsp;&nbsp;// Build expr graph<br>
+&nbsp;&nbsp;Var X = <span class="highlight">_Input</span>({1, 3, 224, 224});<br>
+&nbsp;&nbsp;Var W = <span class="highlight">_Weights</span>({64, 3, 3, 3});<br>
+&nbsp;&nbsp;Var Y = <span class="highlight">_Conv</span>(X, W);<br>
+&nbsp;&nbsp;Var loss = <span class="highlight">_ReduceMean</span>(Y);<br>
+&nbsp;&nbsp;// Compute analytic gradient<br>
+&nbsp;&nbsp;auto gradExpr = gradient(loss, {X, W});<br>
+&nbsp;&nbsp;// Compute numerical gradient<br>
+&nbsp;&nbsp;auto numGrad = numericalGradient(loss, {X, W}, 1e-4f);<br>
+&nbsp;&nbsp;// Compare<br>
+&nbsp;&nbsp;ASSERT_LE(maxAbsDiff(gradExpr[0], numGrad[0]), 1e-4);<br>
+}
+            </div>
+            <div style="margin-top: 15px; padding: 15px; background: #e6fffa; border-radius: 8px;">
+                <h3>Gradient Check Methods</h3>
+                <ul style="margin-top: 5px;">
+                    <li><strong>Forward-mode AD</strong>: Efficient for few inputs</li>
+                    <li><strong>Reverse-mode AD</strong>: Standard for deep learning</li>
+                    <li><strong>Numerical gradient</strong>: Finite difference (f(x+h)-f(x))/h</li>
+                    <li><strong>Central difference</strong>: More accurate (f(x+h)-f(x-h))/(2h)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 11: Speed & Performance Tests -->
+        <div class="slide" id="slide11">
+            <h1>Performance Benchmarking</h1>
+            <h2>Speed & Efficiency Tests</h2>
+            <div class="folder-tree">
+                <span class="folder">test/speed/</span><br>
+                &nbsp;&nbsp;├── <span class="file">speedForIT.cpp</span> <span class="tag">Inference time</span><br>
+                &nbsp;&nbsp;├── <span class="file">speedMatmul.cpp</span> <span class="tag">GEMM benchmarks</span><br>
+                &nbsp;&nbsp;├── <span class="file">speedConvolution.cpp</span> <span class="tag">Conv benchmarks</span><br>
+                &nbsp;&nbsp;├── <span class="file">speedModel.cpp</span> <span class="tag">End-to-end</span><br>
+                &nbsp;&nbsp;├── <span class="file">speedMemory.cpp</span> <span class="tag">Memory usage</span><br>
+                &nbsp;&nbsp;└── <span class="file">speedBackend.cpp</span> <span class="tag">Backend comparison</span>
+            </div>
+            <div class="code-block" style="margin-top: 20px;">
+// Performance test template<br>
+TEST(Speed, MatMul_128x128) {<br>
+&nbsp;&nbsp;const int N = 1000; // iterations<br>
+&nbsp;&nbsp;Tensor A = randomTensor({128, 128});<br>
+&nbsp;&nbsp;Tensor B = randomTensor({128, 128});<br>
+&nbsp;&nbsp;// Warmup<br>
+&nbsp;&nbsp;for (int i = 0; i < 10; ++i) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;matMul(A, B);<br>
+&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;// Benchmark<br>
+&nbsp;&nbsp;Timer timer;<br>
+&nbsp;&nbsp;for (int i = 0; i < N; ++i) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;auto C = matMul(A, B);<br>
+&nbsp;&nbsp;}&nbsp;&nbsp;double avgTime = timer.duration() / N * 1000; // ms<br>
+&nbsp;&nbsp;printf("MatMul 128x128: %.3f ms, GFLOPS: %.2f\\n",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;avgTime, computeGFLOPS(avgTime));<br>
+&nbsp;&nbsp;ASSERT_LT(avgTime, threshold_128x128);<br>
+}
+            </div>
+        </div>
+
+        <!-- Slide 12: Shared Memory & Plugin Tests -->
+        <div class="slide" id="slide12">
+            <h1>Advanced Test Infrastructure</h1>
+            <h2>Shared Memory & Plugin System</h2>
+            <div style="display: flex; gap: 20px; margin-top: 20px;">
+                <div class="architecture-box" style="flex: 1;">
+                    <h3>Shared Memory (test/sharedmem/)</h3>
+                    <ul style="text-align: left; font-size: 0.9em;">
+                        <li>Cross-backend memory sharing</li>
+                        <li>Zero-copy tensor transfer</li>
+                        <li>Memory synchronization</li>
+                        <li>Multi-process sharing</li>
+                        <li>Cache coherency</li>
+                    </ul>
+                </div>
+                <div class="architecture-box" style="flex: 1;">
+                    <h3>Plugin Tests (test/plugin/)</h3>
+                    <ul style="text-align: left; font-size: 0.9em;">
+                        <li>Custom operator loading</li>
+                        <li>Dynamic library linking</li>
+                        <li>Plugin registration API</li>
+                        <li>Version compatibility</li>
+                        <li>Plugin isolation</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="code-block" style="margin-top: 20px;">
+// Shared memory test example<br>
+TEST(SharedMem, CPU2OpenCL) {<br>
+&nbsp;&nbsp;Backend* cpu = createBackend(CPU);<br>
+&nbsp;&nbsp;Backend* opencl = createBackend(OPENCL);<br>
+&nbsp;&nbsp;// Create tensor on CPU<br>
+&nbsp;&nbsp;Tensor* tensor = Tensor::create({1, 3, 224, 224}, <span class="highlight">halide_type_of<float></span>());<br>
+&nbsp;&nbsp;tensor->alloc();<br>
+&nbsp;&nbsp;// Share to OpenCL without copy<br>
+&nbsp;&nbsp;Tensor* shared = tensor-><span class="highlight">shareToBackend</span>(opencl);<br>
+&nbsp;&nbsp;ASSERT_EQ(shared->buffer().device, opencl);<br>
+&nbsp;&nbsp;// Verify data integrity<br>
+&nbsp;&nbsp;ASSERT_TRUE(checkData(tensor, shared));<br>
+}
+            </div>
+        </div>
+
+        <!-- Slide 13: Test Execution Flow -->
+        <div class="slide" id="slide13">
+            <h1>Test Execution Pipeline</h1>
+            <h2>From main.cpp to Test Results</h2>
+            <div class="diagram">
+                <div style="display: flex; flex-direction: column; gap: 20px; align-items: center; width: 100%;">
+                    <div class="architecture-box" style="width: 250px;">
+                        <h3>main.cpp</h3>
+                        <code>MNNTestSuite::runTestSuites()</code>
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="architecture-box" style="width: 250px;">
+                        <h3>Test Discovery</h3>
+                        Static registrar pattern scans all compiled test objects
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="architecture-box" style="width: 250px;">
+                        <h3>Backend Setup</h3>
+                        Iterate over CPU, OpenCL, Metal, Vulkan, CUDA
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="architecture-box" style="width: 300px; background: #c6f6d5; border-color: #48bb78;">
+                        <h3>Test Execution</h3>
+                        For each (test case, backend): run, measure, assert, log
+                    </div>
+                </div>
+            </div>
+            <div class="code-block" style="margin-top: 30px;">
+// Simplified test runner<br>
+int main(<span class="highlight">int argc, char** argv</span>) {<br>
+&nbsp;&nbsp;// Iterate all registered test suites<br>
+&nbsp;&nbsp;for (auto& suite : MNNTestSuite::suites()) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;printf("Running suite: %s\\n", suite.first.c_str());<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// Test on each backend<br>
+&nbsp;&nbsp;&nbsp;&nbsp;for (auto backend : {CPU, OPENCL, METAL, VULKAN, CUDA}) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;MNNTestSuite::setCurBackend(backend);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;bool passed = suite.second->run();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;logResult(suite.first, backend, passed);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;return 0; // Exit code = #failed tests<br>
+}
+            </div>
+        </div>
+
+        <!-- Slide 14: Summary -->
+        <div class="slide" id="slide14">
+            <h1>Test Suite Summary</h1>
+            <h2>Production-Grade Testing Infrastructure</h2>
+            <ul style="font-size: 1.2em; line-height: 2;">
+                <li><strong>Modular Design:</strong> Separate directories for ops, backends, CV, and more</li>
+                <li><strong>Multi-Backend:</strong> Single test runs on CPU, GPU (OpenCL/Metal/Vulkan/CUDA)</li>
+                <li><strong>Self-Registering:</strong> Tests auto-discover via static initializers</li>
+                <li><strong>Comprehensive:</strong> Unit, integration, performance, and gradient tests</li>
+                <li><strong>Helper Utilities:</strong> CommonOpCreator, TestUtils simplify test writing</li>
+                <li><strong>Fidelity Checks:</strong> ONNX/TensorFlow/Caffe model equivalence</li>
+                <li><strong>CI/CD Ready:</strong> CLI runner outputs JUnit XML for integration</li>
+            </ul>
+            <div class="center" style="margin-top: 40px; padding: 20px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 10px; color: white;">
+                <h3>Quality Assurance</h3>
+                <p style="color: white; margin-top: 10px;">Every MNN release passes this entire test suite across all supported backends and platforms, ensuring robustness and correctness.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="nav-buttons">
+        <button id="prevBtn" onclick="changeSlide(-1)">← Previous</button>
+        <button id="nextBtn" onclick="changeSlide(1)">Next →</button>
+    </div>
+    
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 14;
+        
+        function updateSlide() {
+            for (let i = 1; i <= totalSlides; i++) {
+                document.getElementById('slide' + i).classList.remove('active');
+            }
+            document.getElementById('slide' + currentSlide).classList.add('active');
+            document.getElementById('currentSlide').textContent = currentSlide;
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+        }
+        
+        function changeSlide(direction) {
+            currentSlide += direction;
+            if (currentSlide < 1) currentSlide = 1;
+            if (currentSlide > totalSlides) currentSlide = totalSlides;
+            updateSlide();
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                changeSlide(1);
+            } else if (e.key === 'ArrowLeft') {
+                changeSlide(-1);
+            } else if (e.key === 'Home') {
+                currentSlide = 1;
+                updateSlide();
+            } else if (e.key === 'End') {
+                currentSlide = totalSlides;
+                updateSlide();
+            }
+        });
+        
+        updateSlide();
+    </script>
+</body>
+</html>
