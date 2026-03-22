@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNN Code Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #1a1a2e;
+            color: #eaeaea;
+            overflow: hidden;
+            height: 100vh;
+        }
+        .slide {
+            display: none;
+            width: 100%;
+            height: 100%;
+            padding: 60px 80px;
+            overflow-y: auto;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .slide.active {
+            display: block;
+        }
+        h1 {
+            font-size: 3em;
+            margin-bottom: 0.5em;
+            color: #4cc9f0;
+        }
+        h2 {
+            font-size: 2em;
+            margin-bottom: 0.8em;
+            color: #72efdd;
+        }
+        h3 {
+            font-size: 1.5em;
+            margin-bottom: 0.6em;
+            color: #ff6b6b;
+        }
+        p, li {
+            font-size: 1.2em;
+            line-height: 1.6;
+            margin-bottom: 0.8em;
+        }
+        ul {
+            margin-left: 2em;
+            margin-bottom: 1em;
+        }
+        pre {
+            background: #0d0d0d;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 15px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        code {
+            background: #0d0d0d;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .tree {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 1em;
+            line-height: 1.8;
+            color: #8bf;
+        }
+        .tree .folder {
+            color: #ffcc00;
+        }
+        .tree .file {
+            color: #aaffaa;
+        }
+        .slide-footer {
+            position: fixed;
+            bottom: 20px;
+            right: 30px;
+            font-size: 0.9em;
+            color: #888;
+        }
+        .nav-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 30px;
+            font-size: 0.9em;
+            color: #888;
+        }
+        .highlight {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        .tag {
+            display: inline-block;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 2px 8px;
+            margin: 2px;
+            font-size: 0.8em;
+        }
+        .code-snippet {
+            background: #0d0d0d;
+            border-left: 4px solid #4cc9f0;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .two-col {
+            display: flex;
+            gap: 40px;
+        }
+        .two-col > div {
+            flex: 1;
+        }
+        @media (max-width: 1200px) {
+            .slide { padding: 40px 50px; }
+            h1 { font-size: 2.5em; }
+            h2 { font-size: 1.8em; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Slide 1: Title -->
+<section class="slide active" id="slide1">
+    <h1>MNN Code Visualization</h1>
+    <h2>Lightweight Deep Learning Inference Engine</h2>
+    <p style="font-size: 1.5em; margin-top: 1em;">Alibaba's high-performance neural network inference framework</p>
+    <p style="margin-top: 2em; color: #aaa;">Targets: Mobile & Server | Supports: CNN, Transformer, LLM, Diffusion</p>
+    <div class="slide-footer">1 / 20</div>
+    <div class="nav-hint">← → to navigate</div>
+</section>
+
+<!-- Slide 2: Overview -->
+<section class="slide" id="slide2">
+    <h2>What is MNN?</h2>
+    <ul>
+        <li>Highly efficient and <span class="highlight">lightweight</span> deep learning framework</li>
+        <li>Inference and training support (though optimized for inference)</li>
+        <li>Industry-leading performance on-device</li>
+        <li>Integrated into <strong>30+ Alibaba apps</strong>: Taobao, Tmall, Youku, DingTalk, Xianyu</li>
+        <li>Covers <strong>70+ scenarios</strong>: live broadcast, short video, search recommendation, product search, marketing, security, IoT</li>
+        <li>Open source under <strong>Apache 2.0</strong></li>
+    </ul>
+    <div class="slide-footer">2 / 20</div>
+</section>
+
+<!-- Slide 3: Architecture -->
+<section class="slide" id="slide3">
+    <h2>Architecture Overview</h2>
+    <div class="two-col">
+        <div>
+            <h3>Core Design</h3>
+            <ul>
+                <li><strong>Graph Optimization</strong> + <strong>Heterogeneous Backend Scheduling</strong></li>
+                <li>Two inference APIs:
+                    <ul>
+                        <li><strong>Session API</strong> (low-level): Interpreter → createSession → runSession</li>
+                        <li><strong>Module API</strong> (high-level): Module::load → onForward(VARP)</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        <div>
+            <img src="doc/architecture.png" alt="Architecture" style="max-width:100%; border:1px solid #444; border-radius:8px; padding:5px; background:#000;">
+        </div>
+    </div>
+    <div class="slide-footer">3 / 20</div>
+</section>
+
+<!-- Slide 4: Key Abstractions -->
+<section class="slide" id="slide4">
+    <h2>Key Abstractions</h2>
+    <div class="two-col">
+        <ul>
+            <li><strong>Interpreter</strong> / <strong>Session</strong>: Model loading and inference session management</li>
+            <li><strong>Backend</strong> / <strong>Execution</strong>: Hardware backend abstraction and per-op implementations</li>
+            <li><strong>Tensor</strong>: Data container using <code>NC4HW4</code> format for SIMD</li>
+            <li><strong>Op</strong> / <strong>Schema</strong>: FlatBuffers-defined operator descriptors</li>
+            <li><strong>Pipeline</strong> / <strong>Schedule</strong>: Graph execution pipeline</li>
+        </ul>
+        <div>
+            <pre><code>class Interpreter {
+public:
+    static Interpreter* createFromFile(const char* file);
+    static Interpreter* createFromBuffer(const void* buffer, size_t size);
+    Session* createSession(const ScheduleConfig& config);
+    void setSessionMode(SessionMode mode);
+    ...
+};</code></pre>
+        </div>
+    </div>
+    <div class="slide-footer">4 / 20</div>
+</section>
+
+<!-- Slide 5: Tensor Internals -->
+<section class="slide" id="slide5">
+    <h2>Tensor & Memory Format</h2>
+    <pre><code>enum DimensionType {
+    TENSORFLOW,   // NHWC (TensorFlow)
+    CAFFE,        // NCHW (Caffe)
+    CAFFE_C4      // NC4HW4 (optimized)
+};
+
+// NC4HW4: channels packed by 4 for SIMD
+// Example: for 32 channels, layout:
+// N, C0..3, H, W | N, C4..7, H, W | ...</code></pre>
+    <ul>
+        <li>Device tensors allocate memory via backend</li>
+        <li>Host tensors use malloc directly</li>
+        <li>Supports half precision (FP16), int8 quantization</li>
+    </ul>
+    <div class="slide-footer">5 / 20</div>
+</section>
+
+<!-- Slide 6: Backend System -->
+<section class="slide" id="slide6">
+    <h2>Backend Abstraction</h2>
+    <pre><code>class Backend : public NonCopyable {
+public:
+    struct Info {
+        MNNForwardType type = MNN_FORWARD_CPU;
+        union {
+            int numThread = 4;   // CPU threads
+            int gpuMode;         // GPU mode
+        };
+        BackendConfig* user = NULL;
+        Mode mode = DIRECT;
+    };
+    virtual Execution* onCreate(const Op* op, Backend* /*backend*/) = 0;
+    virtual bool onExecute(const std::vector<Tensor*>& inputs,
+                           const std::vector<Tensor*>& outputs,
+                           const Backend::Info& info) = 0;
+    ...
+};</code></pre>
+    <p>Implementations: <span class="tag">CPU</span> <span class="tag">ARM NEON</span> <span class="tag">Metal</span> <span class="tag">OpenCL</span> <span class="tag">Vulkan</span> <span class="tag">CUDA</span> <span class="tag">CoreML</span> <span class="tag">NNAPI</span> <span class="tag">QNN</span></p>
+    <div class="slide-footer">6 / 20</div>
+</section>
+
+<!-- Slide 7: Op Registration Flow -->
+<section class="slide" id="slide7">
+    <h2>Op Implementation Pipeline</h2>
+    <ol style="font-size: 1.3em; line-height: 2;">
+        <li><strong>Schema Definition</strong> – FlatBuffers <code>.fbs</code> files in <code>schema/default/</code></li>
+        <li><strong>Shape Inference</strong> – <code>source/shape/</code> computes output shapes from input shapes</li>
+        <li><strong>Geometry Decomposition</strong> (optional) – <code>source/geometry/</code> breaks complex ops into simpler ones</li>
+        <li><strong>Backend Execution</strong> – Implement <code>Execution</code> for each backend (CPU/GPU/...).</li>
+    </ol>
+    <div class="slide-footer">7 / 20</div>
+</section>
+
+<!-- Slide 8: LLM Subsystem -->
+<section class="slide" id="slide8">
+    <h2>LLM Inference Support</h2>
+    <div class="two-col">
+        <div>
+            <h3>Export (Python)</h3>
+            <ul>
+                <li><code>transformers/llm/export/</code></li>
+                <li><code>llmexport.py</code> – Entry point</li>
+                <li><code>utils/model_mapper.py</code> – Field mapping</li>
+                <li><code>utils/model.py</code> – Unified <code>LlmModel</code> class</li>
+                <li><code>utils/transformers.py</code> – Attention, Decoder, RoPE export</li>
+            </ul>
+        </div>
+        <div>
+            <h3>Inference (C++)</h3>
+            <ul>
+                <li><code>transformers/llm/engine/</code></li>
+                <li><code>llm.cpp</code> – Text inference</li>
+                <li><code>omni.cpp</code> – Multimodal (vision/audio)</li>
+                <li>KVCache management</li>
+                <li>Sampling strategies</li>
+            </ul>
+        </div>
+    </div>
+    <div class="slide-footer">8 / 20</div>
+</section>
+
+<!-- Slide 9: Project Structure -->
+<section class="slide" id="slide9">
+    <h2>Repository Structure</h2>
+    <div class="tree">
+        <div class="folder">├── include/MNN/</div>
+        <div class="file">&nbsp;&nbsp;├── Interpreter.hpp</div>
+        <div class="file">&nbsp;&nbsp;├── Tensor.hpp</div>
+        <div class="file">&nbsp;&nbsp;└── ... (public headers)</div>
+        <div class="folder">├── source/</div>
+        <div class="folder">&nbsp;&nbsp;├── core/</div>
+        <div class="file">&nbsp;&nbsp;&nbsp;&nbsp;├── Interpreter.cpp</div>
+        <div class="file">&nbsp;&nbsp;&nbsp;&nbsp;├── Session.cpp</div>
+        <div class="file">&nbsp;&nbsp;&nbsp;&nbsp;├── Backend.cpp</div>
+        <div class="file">&nbsp;&nbsp;&nbsp;&nbsp;├── Tensor.cpp</div>
+        <div class="folder">&nbsp;&nbsp;├── backend/ (cpu, arm82, metal, cuda, opencl, vulkan)</div>
+        <div class="folder">&nbsp;&nbsp;├── shape/</div>
+        <div class="folder">&nbsp;&nbsp;└── geometry/</div>
+        <div class="folder">├── express/ (high-level dynamic graph, VARP)</div>
+        <div class="folder">├── schema/default/ (FlatBuffers op definitions)</div>
+        <div class="folder">├── tools/ (converter, compress, cv, train, ...)</div>
+        <div class="folder">├── transformers/llm/ &amp;&amp; /diffusion/</div>
+        <div class="folder">└── pymnn/ (Python bindings)</div>
+    </div>
+    <div class="slide-footer">9 / 20</div>
+</section>
+
+<!-- Slide 10: Tools Suite -->
+<section class="slide" id="slide10">
+    <h2>Tools in <code>tools/</code></h2>
+    <div class="two-col">
+        <ul>
+            <li><strong>converter/</strong> – Convert ONNX/TF/Caffe/Torch → MNN</li>
+            <li><strong>cpp/</strong> – C++ utilities:
+                <ul>
+                    <li><code>backendTest.cpp</code></li>
+                    <li><code>ModuleBasic.cpp</code></li>
+                    <li><code>MNN2QNNModel.cpp</code></li>
+                </ul>
+            </li>
+            <li><strong>cv/</strong> – Lightweight OpenCV-like library (~100KB)</li>
+            <li><strong>mnncompress/</strong> – Compression (pruning, quantization) for TF/PyTorch</li>
+        </ul>
+        <ul>
+            <li><strong>quantization/</strong> – Post-training &amp; QAT tools</li>
+            <li><strong>train/</strong> – Training support</li>
+            <li><strong>audio/</strong> – Audio processing utilities</li>
+            <li><strong>evaluation/</strong> – Benchmark &amp; accuracy eval</li>
+            <li><strong>script/</strong> – Helper scripts</li>
+        </ul>
+    </div>
+    <div class="slide-footer">10 / 20</div>
+</section>
+
+<!-- Slide 11: Build Instructions -->
+<section class="slide" id="slide11">
+    <h2>Build & Test</h2>
+    <pre><code># Build C++ with LLM support
+mkdir build &amp;&amp; cd build
+cmake .. -DMNN_BUILD_LLM=ON -DMNN_LOW_MEMORY=ON
+make -j$(nproc)
+
+# Common CMake options
+# MNN_BUILD_TEST, MNN_BUILD_CONVERTER, MNN_METAL,
+# MNN_OPENCL, MNN_VULKAN, MNN_CUDA, MNN_ARM82,
+# MNN_BUILD_QUANTOOLS, MNN_SUPPORT_TRANSFORMER_FUSE
+
+# Run unit tests
+cd build &amp;&amp; ./run_test.out
+
+# LLM export
+cd transformers/llm/export
+python llmexport.py --path /path/to/model \
+    --export mnn --hqq --dst_path ./MODEL
+
+# LLM inference
+./llm_demo /path/to/MODEL/config.json prompt.txt
+./llm_bench -m /path/to/MODEL/config.json</code></pre>
+    <div class="slide-footer">11 / 20</div>
+</section>
+
+<!-- Slide 12: Performance Highlights -->
+<section class="slide" id="slide12">
+    <h2>Performance &amp; Efficiency</h2>
+    <ul>
+        <li><strong>Lightweight binaries:</strong>
+            <ul>
+                <li>iOS static library (armv7+arm64): ~<strong>12MB</strong></li>
+                <li>Android core .so: ~<strong>800KB</strong> (armv7a, c++_shared)</li>
+                <li>Use <code>MNN_BUILD_MINI</code> to reduce ~25% size (fixed input size)</li>
+            </ul>
+        </li>
+        <li><strong>Quantization:</strong> FP16 / Int8 reduces model size <strong>50-70%</strong></li>
+        <li><strong>Optimized compute:</strong>
+            <ul>
+                <li>Hand-tuned assembly for ARM / x64</li>
+                <li>Winograd convolution for 3x3–7x7 kernels</li>
+                <li>sdot / VNNI for ARM v8.2</li>
+            </ul>
+        </li>
+        <li><strong>GPU backends:</strong> Metal (iOS), OpenCL, Vulkan, CUDA</li>
+    </ul>
+    <div class="slide-footer">12 / 20</div>
+</section>
+
+<!-- Slide 13: Platform Support Matrix -->
+<section class="slide" id="slide13">
+    <h2>Architecture &amp; Precision Support</h2>
+    <p style="font-size: 0.9em;">S = Recommended | A = Supported | B = Partial/Unoptimized | C = Not Supported</p>
+    <pre style="font-size: 0.75em; line-height: 1.4;"><code>| Arch / Precision   | Normal | FP16 | BF16 | Int8 |
+|--------------------|--------|------|------|------|
+| CPU: Native        |   B    |  C   |  B   |  B   |
+| x86/x64-SSE4.1     |   A    |  C   |  C   |  A   |
+| x86/x64-AVX2       |   S    |  C   |  C   |  A   |
+| x86/x64-AVX512     |   S    |  C   |  C   |  S   |
+| ARMv7a             |   S    |  S   |  S   |  S   |
+| ARMv8 (incl. v8.2) |   S    |  S   |  S   |  S   |
+| GPU: OpenCL        |   A    |  S   |  C   |  S   |
+| GPU: Vulkan        |   A    |  A   |  C   |  A   |
+| GPU: Metal         |   A    |  S   |  C   |  S   |
+| GPU: CUDA          |   A    |  S   |  C   |  A   |
+| NPU: CoreML        |   A    |  C   |  C   |  C   |
+| NPU: HIAI          |   A    |  C   |  C   |  C   |
+| NPU: NNAPI         |   B    |  B   |  C   |  B   |
+| NPU: QNN           |   C    |  B   |  C   |  C   |</code></pre>
+    <div class="slide-footer">13 / 20</div>
+</section>
+
+<!-- Slide 14: Key Features Summary -->
+<section class="slide" id="slide14">
+    <h2>Key Features at a Glance</h2>
+    <div class="two-col">
+        <ul>
+            <li><strong>Lightweight</strong> – No dependencies, easy deployment</li>
+            <li><strong>Versatile</strong> – Supports 178+ TF OPs, 163+ Torch OPs, 158+ ONNX OPs</li>
+            <li><strong>Model coverage:</strong> CNN, RNN, GAN, Transformer</li>
+            <li><strong>Dynamic graphs:</strong> Control flow, dynamic inputs</li>
+            <li><strong>Multi-input/output</strong> models</li>
+            <li><strong>Hybrid compute:</strong> CPU + GPU</li>
+        </ul>
+        <ul>
+            <li><strong>Training support</strong> – Build &amp; train models on PC/mobile</li>
+            <li><strong>Ease of use</strong> – Python API, NumPy-like ops</li>
+            <li><strong>Image processing</strong> – Lightweight CV module (~100KB)</li>
+            <li><strong>LLM runtime</strong> – Qwen, Baichuan, Llama, etc.</li>
+            <li><strong>Diffusion runtime</strong> – Stable Diffusion</li>
+            <li><strong>Cross-platform</strong> – iOS 8+, Android 4.3+, POSIX embedded</li>
+        </ul>
+    </div>
+    <div class="slide-footer">14 / 20</div>
+</section>
+
+<!-- Slide 15: Code Snippet - Interpreter Usage -->
+<section class="slide" id="slide15">
+    <h2>Interpreter API (C++)</h2>
+    <pre><code>// Create interpreter from model file
+MNN::Interpreter* net = MNN::Interpreter::createFromFile("model.mnn");
+
+// Configure session
+MNN::ScheduleConfig config;
+config.type = MNN_FORWARD_CPU;
+config.numThread = 4;
+config.backendType = MNN_FORWARD_CPU;
+
+// Create session
+MNN::Session* session = net->createSession(config);
+
+// Get input & output tensors
+MNN::Tensor* input  = net->getSessionInput(session);
+MNN::Tensor* output = net->getSessionOutput(session);
+
+// Set input data (host pointer)
+input->copyFromHostTensor(&hostTensor);
+
+// Run inference
+net->runSession(session);
+
+// Retrieve results
+output->copyToHostTensor(&hostOutput);</code></pre>
+    <div class="slide-footer">15 / 20</div>
+</section>
+
+<!-- Slide 16: Code Snippet - Module API (Express) -->
+<section class="slide" id="slide16">
+    <h2>Module API (Express)</h2>
+    <pre><code>#include "MNN/expr/Expr.hpp"
+#include "MNN/expr/Module.hpp"
+
+using namespace MNN::Express;
+
+// Load model
+std::shared_ptr<Module> module = Module::load("model.mnn");
+
+// Create input variable (VARP)
+auto input = _Input({1, 3, 224, 224}, NCHW);
+
+// Forward pass
+auto output = module->onForward({input});
+
+// Get result as Tensor
+std::shared_ptr<Tensor> result = output[0]->readMap<float>();</code></pre>
+    <p style="margin-top:1em;">Used by LLM / Diffusion workloads for dynamic graph construction.</p>
+    <div class="slide-footer">16 / 20</div>
+</section>
+
+<!-- Slide 17: Tools - Converter -->
+<section class="slide" id="slide17">
+    <h2>Model Conversion</h2>
+    <p>The <code>tools/converter/</code> directory houses the converter frontends:</p>
+    <ul>
+        <li><strong>ONNX</strong> – 158 operators supported</li>
+        <li><strong>TensorFlow / TensorFlow Lite</strong> – 178 operators supported</li>
+        <li><strong>Caffe</strong> – 52 operators supported</li>
+        <li><strong>PyTorch (Torchscript)</strong> – 163 operators supported</li>
+    </ul>
+    <p>The converter performs graph optimizations (constant folding, operator fusion) and handles dynamic shapes, control flow, and multi-input/output models.</p>
+    <div class="slide-footer">17 / 20</div>
+</section>
+
+<!-- Slide 18: Tools - Compression -->
+<section class="slide" id="slide18">
+    <h2>Model Compression (mnncompress)</h2>
+    <p>Python-based tools for pruning and quantization, targeting TensorFlow and PyTorch.</p>
+    <ul>
+        <li><strong>Pruning:</strong>
+            <ul>
+                <li>SNIP, Taylor FO, ADMM, SIMD_OC</li>
+                <li>Level-based magnitude pruning</li>
+            </ul>
+        </li>
+        <li><strong>Quantization:</strong>
+            <ul>
+                <li>LSQ (Learned Step Size Quantization)</li>
+                <li>EMA quantization</li>
+                <li>Weight-only &amp; full quantization</li>
+            </ul>
+        </li>
+        <li>Decomposition, overflow handling, custom ops</li>
+    </ul>
+    <div class="slide-footer">18 / 20</div>
+</section>
+
+<!-- Slide 19: Contributing &amp; Community -->
+<section class="slide" id="slide19">
+    <h2>Community &amp; Support</h2>
+    <ul>
+        <li><strong>DingTalk groups</strong> (primarily Chinese):
+            <ul>
+                <li>Group #4: 160170007549 (available)</li>
+                <li>Group #2: 23350225 (full)</li>
+                <li>Group #1: 23329087 (full)</li>
+            </ul>
+        </li>
+        <li><strong>Documentation:</strong> <a href="https://mnn-docs.readthedocs.io" style="color:#4cc9f0;">Read the Docs</a></li>
+        <li><strong>MNN Workbench:</strong> <a href="http://www.mnn.zone" style="color:#4cc9f0;">mnn.zone</a> (pretrained models, visual tools)</li>
+        <li><strong>Papers:</strong>
+            <ul>
+                <li>MLSys 2020: "MNN: A Universal and Efficient Inference Engine"</li>
+                <li>OSDI 2022: "Walle: An End-to-End, General-Purpose, and Large-Scale Production System for Device-Cloud Collaborative Machine Learning"</li>
+            </ul>
+        </li>
+    </ul>
+    <div class="slide-footer">19 / 20</div>
+</section>
+
+<!-- Slide 20: License &amp; Acknowledgement -->
+<section class="slide" id="slide20">
+    <h2>License</h2>
+    <p style="font-size: 1.3em; text-align: center; margin-top: 2em;">
+        <strong>Apache License 2.0</strong>
+    </p>
+    <p style="text-align: center; margin-top: 1em; color: #aaa;">Free for commercial and personal use.</p>
+    <h3 style="margin-top: 2em;">Acknowledgements</h3>
+    <p>MNN refers to many great open-source projects: Caffe, TensorFlow, PyTorch, ONNX, Halide, ncnn, OpenCV, Vulkan samples, and more.</p>
+    <div class="slide-footer">20 / 20</div>
+</section>
+
+<script>
+    // Simple slide navigation
+    const slides = document.querySelectorAll('.slide');
+    let current = 0;
+
+    function showSlide(index) {
+        slides.forEach((s, i) => {
+            s.classList.toggle('active', i === index);
+        });
+        current = index;
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            showSlide((current + 1) % slides.length);
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            showSlide((current - 1 + slides.length) % slides.length);
+        } else if (e.key === 'Home') {
+            e.preventDefault();
+            showSlide(0);
+        } else if (e.key === 'End') {
+            e.preventDefault();
+            showSlide(slides.length - 1);
+        }
+    });
+
+    // Optional: click to advance (right side of screen)
+    document.addEventListener('click', (e) => {
+        const w = window.innerWidth;
+        if (e.clientX > w * 0.7) {
+            showSlide((current + 1) % slides.length);
+        } else if (e.clientX < w * 0.3) {
+            showSlide((current - 1 + slides.length) % slides.length);
+        }
+    });
+
+    // Numbered slide navigation via console: showSlide(N)
+    window.showSlide = showSlide;
+</script>
+
+</body>
+</html>
