@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNN Deep Dive - Code Architecture Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+            color: #e6edf3;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .slide {
+            display: none;
+            width: 100%;
+            height: 100%;
+            padding: 50px 80px;
+            overflow-y: auto;
+            position: absolute;
+            top: 0;
+            left: 0;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        h1 {
+            font-size: 3.2em;
+            margin-bottom: 0.5em;
+            color: #58a6ff;
+            text-shadow: 0 2px 8px rgba(88, 166, 255, 0.3);
+        }
+
+        h2 {
+            font-size: 2.4em;
+            margin-bottom: 0.8em;
+            color: #7ee787;
+            border-bottom: 2px solid #30363d;
+            padding-bottom: 15px;
+        }
+
+        h3 {
+            font-size: 1.8em;
+            margin-bottom: 0.6em;
+            color: #ff7b72;
+        }
+
+        h4 {
+            font-size: 1.4em;
+            margin-bottom: 0.5em;
+            color: #d2a8ff;
+        }
+
+        p, li {
+            font-size: 1.1em;
+            line-height: 1.7;
+            margin-bottom: 0.8em;
+            color: #c9d1d9;
+        }
+
+        ul {
+            margin-left: 2em;
+            margin-bottom: 1em;
+        }
+
+        pre {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-size: 0.95em;
+            line-height: 1.5;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        code {
+            background: #21262d;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.9em;
+            color: #79c0ff;
+        }
+
+        .keyword { color: #ff7b72; }
+        .type { color: #ffa657; }
+        .string { color: #a5d6ff; }
+        .comment { color: #8b949e; font-style: italic; }
+        .function { color: #d2a8ff; }
+        .number { color: #79c0ff; }
+
+        .code-block {
+            background: #0d1117;
+            border-left: 4px solid #58a6ff;
+            padding: 18px;
+            margin: 15px 0;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .architecture-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .layer {
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            border-radius: 8px;
+            padding: 18px;
+            margin: 8px 0;
+        }
+
+        .layer-title {
+            font-weight: bold;
+            color: #58a6ff;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+
+        .flow-arrow {
+            text-align: center;
+            font-size: 1.5em;
+            color: #7ee787;
+            margin: 5px 0;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 20px;
+        }
+
+        .three-column {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: rgba(48, 54, 61, 0.6);
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            padding: 20px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(88, 166, 255, 0.15);
+            border-color: #58a6ff;
+        }
+
+        .card-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #7ee787;
+            margin-bottom: 10px;
+        }
+
+        .highlight {
+            color: #ff7b72;
+            font-weight: bold;
+        }
+
+        .tag {
+            display: inline-block;
+            background: rgba(126, 231, 135, 0.15);
+            border: 1px solid rgba(126, 231, 135, 0.3);
+            border-radius: 15px;
+            padding: 4px 12px;
+            margin: 3px;
+            font-size: 0.85em;
+            color: #7ee787;
+        }
+
+        .file-tree {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.95em;
+            line-height: 1.8;
+            background: #0d1117;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .folder { color: #ffa657; }
+        .file { color: #7ee787; margin-left: 20px; }
+
+        .slide-footer {
+            position: fixed;
+            bottom: 20px;
+            right: 30px;
+            font-size: 0.9em;
+            color: #8b949e;
+        }
+
+        .nav-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 30px;
+            font-size: 0.85em;
+            color: #8b949e;
+            background: rgba(13, 17, 23, 0.8);
+            padding: 8px 15px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        .progress-dots {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #30363d;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: #58a6ff;
+            transform: scale(1.3);
+        }
+
+        .algorithm-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .algorithm-step {
+            background: rgba(210, 168, 255, 0.1);
+            border: 1px solid rgba(210, 168, 255, 0.3);
+            border-radius: 8px;
+            padding: 15px 20px;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .step-number {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #d2a8ff;
+            margin-bottom: 5px;
+        }
+
+        .step-title {
+            font-size: 0.95em;
+            color: #e6edf3;
+        }
+
+        .matrix-visual {
+            display: inline-block;
+            font-family: monospace;
+            background: #0d1117;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px;
+            border: 1px solid #30363d;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #0d1117;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #30363d;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .code-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .code-line {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .line-num {
+            color: #8b949e;
+            min-width: 35px;
+            text-align: right;
+            font-size: 0.9em;
+        }
+
+        .line-content {
+            flex: 1;
+        }
+
+        .indent-1 { padding-left: 20px; }
+        .indent-2 { padding-left: 40px; }
+        .indent-3 { padding-left: 60px; }
+
+        @media (max-width: 1400px) {
+            .slide { padding: 40px 50px; }
+            h1 { font-size: 2.6em; }
+            h2 { font-size: 2em; }
+            .two-column { grid-template-columns: 1fr; }
+            .three-column { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Slide 1: Title -->
+<section class="slide active">
+    <h1>MNN Deep Dive</h1>
+    <h2>Code Architecture & Implementation Insights</h2>
+    <p style="font-size: 1.4em; margin-top: 30px; color: #7ee787;">
+        Alibaba's Production-Grade Deep Learning Inference Engine
+    </p>
+    <div style="margin-top: 50px; padding: 25px; background: rgba(88, 166, 255, 0.1); border-radius: 10px; border-left: 4px solid #58a6ff;">
+        <h3 style="color: #58a6ff; margin-bottom: 15px;">Focus Areas</h3>
+        <ul style="margin-left: 1.5em;">
+            <li>Backend abstraction & heterogeneous scheduling</li>
+            <li>Tensor memory layout (NC4HW4) & optimization</li>
+            <li>Op registration, shape inference & geometry decomposition</li>
+            <li>LLM inference engine with KVCache management</li>
+            <li>Performance optimizations (Winograd, SIMD, quantization)</li>
+        </ul>
+    </div>
+    <div class="nav-hint">← → Arrow keys to navigate | Space to advance</div>
+    <div class="slide-footer">1 / 22</div>
+</section>
+
+<!-- Slide 2: Project Structure -->
+<section class="slide">
+    <h2>Project Directory Structure</h2>
+    <p>9 Core modules under <code>source/</code> - each addressing a specific concern</p>
+    
+    <div class="three-column">
+        <div class="card">
+            <div class="card-title">⚙️ backend/</div>
+            <p>Hardware-specific<br>optimizations<br>CPU, GPU, NPU</p>
+        </div>
+        <div class="card">
+            <div class="card-title">🔧 core/</div>
+            <p>Execution engine<br>Interpreter, Session,<br>Tensor, Pipeline</p>
+        </div>
+        <div class="card">
+            <div class="card-title">👁️ cv/</div>
+            <p>Computer vision<br>pre/post-processing<br>~100KB footprint</p>
+        </div>
+        <div class="card">
+            <div class="card-title">📐 geometry/</div>
+            <p>Op decomposition<br>into lower-level<br>computations</p>
+        </div>
+        <div class="card">
+            <div class="card-title">☕ jni/</div>
+            <p>Android Java<br>bindings & JNI<br>interface</p>
+        </div>
+        <div class="card">
+            <div class="card-title">🔢 math/</div>
+            <p>Math primitives<br>GEMM, Winograd,<br>quantization</p>
+        </div>
+        <div class="card">
+            <div class="card-title">🔌 plugin/</div>
+            <p>Plugin system<br>Custom ops &<br>extensions</p>
+        </div>
+        <div class="card">
+            <div class="card-title">📊 shape/</div>
+            <p>Static shape<br>inference &<br>validation</p>
+        </div>
+        <div class="card">
+            <div class="card-title">🛠️ utils/</div>
+            <p>Infrastructure<br>logging, memory,<br>file IO</p>
+        </div>
+    </div>
+    <div class="slide-footer">2 / 22</div>
+</section>
+
+<!-- Slide 3: Core Architecture -->
+<section class="slide">
+    <h2>Execution Architecture</h2>
+    <p>Two-tier API design supporting both low-level control and high-level dynamic graphs</p>
+    
+    <div class="architecture-diagram">
+        <div class="layer">
+            <div class="layer-title">Application Layer</div>
+            <p style="margin: 8px 0 0 0; color: #c9d1d9;">
+                <strong>Session API (Low-level)</strong>: Direct tensor manipulation<br>
+                <code>Interpreter → createSession → runSession</code>
+            </p>
+            <p style="margin: 8px 0 0 0; color: #c9d1d9;">
+                <strong>Module API (Express - Recommended)</strong>: Dynamic graph construction<br>
+                <code>Module::load → onForward(VARP)</code>
+            </p>
+        </div>
+        
+        <div class="flow-arrow">↓</div>
+        
+        <div class="layer">
+            <div class="layer-title">MNN Core Engine</div>
+            <div class="code-flow">
+                <div class="code-line">
+                    <span class="line-num">1</span>
+                    <span class="line-content"><span class="comment">// Model loading</span></span>
+                </div>
+                <div class="code-line indent-1">
+                    <span class="line-content"><span class="keyword">auto</span> interpreter = <span class="function">Interpreter::createFromFile</span>(<span class="string">"model.mnn"</span>);</span>
+                </div>
+                <div class="code-line">
+                    <span class="line-num">3</span>
+                    <span class="line-content"><span class="comment">// Session creation with backend config</span></span>
+                </div>
+                <div class="code-line indent-1">
+                    <span class="line-content">interpreter-><span class="function">createSession</span>(config);</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flow-arrow">↓</div>
+        
+        <div class="layer">
+            <div class="layer-title">Backend Layer</div>
+            <p style="margin: 8px 0 0 0; color: #c9d1d9;">
+                <strong>Backend Abstraction</strong>: CPU (ARM/x86) | GPU (Metal/OpenCL/Vulkan/CUDA) | NPU (CoreML/NNAPI/QNN)
+            </p>
+            <p style="margin: 8px 0 0 0; color: #c9d1d9;">
+                <strong>Execution Units</strong>: Per-backend <code>Execution</code> implementations
+            </p>
+        </div>
+    </div>
+    <div class="slide-footer">3 / 22</div>
+</section>
+
+<!-- Slide 4: Tensor Memory Format -->
+<section class="slide">
+    <h2>Tensor Memory Layout: NC4HW4</h2>
+    <p>Special memory format for SIMD optimization on ARM/x86 backends</p>
+    
+    <div class="two-column">
+        <div>
+            <h3 style="color: #d2a8ff;">Problem: Standard NCHW Layout</h3>
+            <div class="code-block">
+<span class="comment">// NCHW: channels not aligned for SIMD</span>
+Tensor shape: [N, C, H, W]
+Memory layout:
+N0: C0 C1 C2 C3 C4 C5 C6 C7 C8 ...
+       ^        ^       ^
+       |        |       |
+    SIMD       SIMD    SIMD
+   load 4    load 4  load 4
+   channels  channels channels
+            (non-contiguous)
+            </div>
+            <p style="color: #ff7b72;">SIMD registers cannot efficiently load non-contiguous channel data</p>
+        </div>
+        
+        <div>
+            <h3 style="color: #d2a8ff;">Solution: NC4HW4 Layout</h3>
+            <div class="code-block">
+<span class="comment">// Channels packed by 4 for SIMD</span>
+Tensor shape: [N, C, H, W] (logical)
+Memory layout (C=32):
+N0: C0-3 H0 W0   | C4-7 H0 W0   | C8-11 H0 W0   | C28-31 H0 W0
+    ^^^^^^^^       ^^^^^^^^       ^^^^^^^^        ^^^^^^^^
+    SIMD reg 1     SIMD reg 2     SIMD reg 3      SIMD reg 4
+    
+N0: C0-3 H1 W0   | C4-7 H1 W0   | ... (next height row)
+            </div>
+            <p style="color: #7ee787;">Each SIMD register loads 4 contiguous channels → optimal throughput</p>
+        </div>
+    </div>
+    
+    <div class="code-block" style="margin-top: 20px;">
+<span class="comment">// Enum definition in Tensor.hpp</span>
+<span class="keyword">enum class</span> <span class="type">DimensionFormat</span> {
+    TENSORFLOW = 0,  <span class="comment">// NHWC</span>
+    CAFFE = 1,       <span class="comment">// NCHW</span>
+    CAFFE_C4 = 2     <span class="comment">// NC4HW4 (optimized)</span>
+};
+    </div>
+    <div class="slide-footer">4 / 22</div>
+</section>
+
+<!-- Slide 5: Backend Abstraction -->
+<section class="slide">
+    <h2>Backend Abstraction System</h2>
+    <p>Polymorphic backend factory enabling runtime hardware selection</p>
+    
+    <div class="code-block">
+<span class="comment">// Backend base class (Backend.hpp)</span>
+<span class="keyword">class</span> <span class="type">Backend</span> : <span class="keyword">public</span> <span class="type">NonCopyable</span> {
+<span class="keyword">public</span>:
+    <span class="keyword">struct</span> <span class="type">Info</span> {
+        <span class="type">MNNForwardType</span> type = MNN_FORWARD_CPU;
+        <span class="keyword">union</span> {
+            <span class="keyword">int</span> numThread = <span class="number">4</span>;     <span class="comment">// CPU threads</span>
+            <span class="keyword">int</span> gpuMode;         <span class="comment">// GPU-specific mode</span>
+        };
+        <span class="type">BackendConfig</span>* user = <span class="keyword">nullptr</span>;
+        <span class="type">Mode</span> mode = DIRECT;
+    };
+    
+    <span class="comment">// Factory method: create op-specific execution unit</span>
+    <span class="keyword">virtual</span> <span class="type">Execution*</span> <span class="function">onCreate</span>(<span class="keyword">const</span> <span class="type">Op*</span> op, <span class="type">Backend*</span> backend) = <span class="number">0</span>;
+    
+    <span class="comment">// Execute op on this backend</span>
+    <span class="keyword">virtual</span> <span class="type">bool</span> <span class="function">onExecute</span>(<span class="keyword">const</span> std::vector&lt;<span class="type">Tensor*</span>&gt;& inputs,
+                             <span class="keyword">const</span> std::vector&lt;<span class="type">Tensor*</span>&gt;& outputs,
+                             <span class="keyword">const</span> <span class="type">Info&amp;</span>& info) = <span class="number">0</span>;
+    
+    <span class="keyword">virtual</span> <span class="type">BackendConfig*</span> <span class="function">onCreateConfig</span>() { <span class="keyword">return</span> <span class="keyword">nullptr</span>; }
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="function">onExecuteOp</span>(<span class="type">Op</span>* op, <span class="type">Backend</span>* backend) {}
+};
+    </div>
+    
+    <div class="flow-arrow">↓</div>
+    
+    <h3>Backend Implementations (Factory Registration)</h3>
+    <div class="code-block">
+<span class="comment">// Macro-based registration (e.g., in cpu_backend.cpp)</span>
+<span class="function">REGISTER_BACKEND</span>(MNN_FORWARD_CPU, <span class="type">CPUBackend</span>)
+
+<span class="comment">// Backend factory (BackendFactory.cpp)</span>
+<span class="type">Backend</span>* <span class="function">BackendFactory::get</span>(<span class="type">MNNForwardType</span> type, <span class="type">BackendConfig</span>* config) {
+    <span class="keyword">for</span> (<span class="keyword">auto</span>& factory : getAll()) {
+        <span class="keyword">if</span> (factory-&gt;mType == type) {
+            <span class="keyword">return</span> factory-&gt;onGetBackend(config);
+        }
+    }
+    <span class="keyword">return</span> <span class="keyword">nullptr</span>;
+}
+    </div>
+    <div class="slide-footer">5 / 22</div>
+</section>
+
+<!-- Slide 6: Op Pipeline -->
+<section class="slide">
+    <h2>Operator Implementation Pipeline</h2>
+    <p>From schema definition to backend execution - 4 stage process</p>
+    
+    <div class="algorithm-flow">
+        <div class="algorithm-step">
+            <div class="step-number">1</div>
+            <div class="step-title">Schema Definition</div>
+        </div>
+        <div class="algorithm-step">
+            <div class="step-number">2</div>
+            <div class="step-title">Shape Inference</div>
+        </div>
+        <div class="algorithm-step">
+            <div class="step-number">3</div>
+            <div class="step-title">Geometry Decomp</div>
+        </div>
+        <div class="algorithm-step">
+            <div class="step-number">4</div>
+            <div class="step-title">Backend Impl</div>
+        </div>
+    </div>
+    
+    <div class="two-column">
+        <div class="card">
+            <div class="card-title">📄 schema/default/*.fbs</div>
+            <p>FlatBuffers schema defining op parameters, inputs, outputs. Example:</p>
+            <div class="code-block" style="font-size: 0.85em;">
+<span class="keyword">table</span> <span class="type">Conv2DBuilder</span> {
+    kernelX:<span class="keyword">int</span>;
+    kernelY:<span class="keyword">int</span>;
+    strideX:<span class="keyword">int</span>;
+    strideY:<span class="keyword">int</span>;
+    padX:<span class="keyword">int</span>;
+    padY:<span class="keyword">int</span>;
+    <span class="comment">// ...</span>
+}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">🔍 source/shape/</div>
+            <p>Compile-time shape inference. Input shapes → output shapes</p>
+            <div class="code-block" style="font-size: 0.85em;">
+<span class="comment">// ShapeConv.cpp:void</span> <span class="function">ShapeInferenceConv2D</span>(...) {
+    <span class="comment">// Formula: (W - K + 2P) / S + 1</span>
+    <span class="keyword">const auto</span> outputX = (inputX + <span class="number">2</span>*padX - kernelX) / strideX + <span class="number">1</span>;
+    output-&gt;<span class="function">setLength</span>(...);
+}
+            </div>
+        </div>
+    </div>
+    
+    <div class="two-column" style="margin-top: 20px;">
+        <div class="card">
+            <div class="card-title">🔧 source/geometry/</div>
+            <p>Op decomposition into simpler ops. Example: <code>Conv2D + BN + ReLU</code> → fused single op</p>
+            <div class="code-block" style="font-size: 0.85em;">
+<span class="comment">// GeometryConv2D.cpp</span>
+<span class="keyword">bool</span> <span class="function">GeometryConv2D</span>::<span class="function">compute</span>() {
+    <span class="keyword">if</span> (mConv2D->opType() == <span class="type">OpType_Conv2D</span> && 
+        hasBN() && hasReLU()) {
+        <span class="keyword">return</span> <span class="function">computeFused</span>();  <span class="comment">// Single kernel</span>
+    }
+    <span class="keyword">return</span> <span class="function">computeSeparate</span>();  <span class="comment">// Three kernels</span>
+}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">⚡ source/backend/</div>
+            <p>Backend-specific execution implementations. Each backend provides optimized kernels.</p>
+            <div class="code-block" style="font-size: 0.85em;">
+<span class="comment">// cpu/conv_float_sse.cpp (SSE optimized)</span>
+<span class="keyword">bool</span> <span class="type">ConvFloat</span>::<span class="function">onExecute</span>() {
+    <span class="comment">// SIMD-optimized convolution</span>
+    __m128 k = _mm_load_ps(kernel_data);
+    __m128 i = _mm_load_ps(input_data);
+    __m128 result = _mm_mul_ps(k, i);
+    <span class="comment">// ...</span>
+}
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer">6 / 22</div>
+</section>
+
+<!-- Slide 7: Op Registration Pattern -->
+<section class="slide">
+    <h2>Operator Registration Pattern</h2>
+    <p>Automatic op registration through macros and factory pattern</p>
+    
+    <div class="two-column">
+        <div>
+            <h3>Registration Flow</h3>
+            <div class="code-block">
+<span class="comment">// 1. Define op in schema (Conv2D.fbs)</span>
+<span class="keyword">namespace</span> <span class="type">MNN</span> {
+<span class="keyword">table</span> <span class="type">Conv2D</span> { ... }
+<span class="function">REGISTER_SCHEMA</span>(Conv2D);
+
+<span class="comment">// 2. Register shape inference</span>
+<span class="keyword">void</span> <span class="function">ShapeInferenceConv2D</span>(<span class="keyword">const</span> <span class="type">Op</span>* op, 
+                                 <span class="keyword">const</span> std::vector&lt;<span class="type">Tensor*</span>&gt;& inputs,
+                                 <span class="keyword">const</span> std::vector&lt;<span class="type">Tensor*</span>&gt;& outputs) {
+    <span class="comment">// ...</span>
+}
+<span class="function">REGISTER_SHAPE_INFER</span>(Conv2D, ShapeInferenceConv2D);
+
+<span class="comment">// 3. Register geometry computation</span>
+<span class="function">REGISTER_GEOMETRY</span>(Conv2D, GeometryConv2D);
+
+<span class="comment">// 4. Register backend execution</span>
+<span class="comment">// In cpu/conv_float.cpp:</span>
+<span class="function">REGISTER_CPU_OP</span>(Conv2D, <span class="function">ConvFloat</span>);
+            </div>
+        </div>
+        
+        <div>
+            <h3>Factory System</h3>
+            <div class="code-block">
+<span class="keyword">class</span> <span class="type">OpFactory</span> {
+<span class="keyword">public</span>:
+    <span class="keyword">using</span> <span class="type">Creator</span> = <span class="type">Op</span>*(*)(<span class="keyword">const</span> <span class="type">OpInfo</span>*);
+    
+    <span class="keyword">static</span> <span class="type">Op*</span> <span class="function">getOp</span>(<span class="keyword">const</span> <span class="type">OpInfo</span>* info) {
+        <span class="keyword">auto</span> it = gCreatorMap().find(info-&gt;type());
+        <span class="keyword">if</span> (it != gCreatorMap().end()) {
+            <span class="keyword">return</span> it-&gt;second(info);
+        }
+        <span class="keyword">return</span> <span class="keyword">nullptr</span>;
+    }
+    
+<span class="keyword">private</span>:
+    <span class="keyword">static</span> std::unordered_map&lt;<span class="type">OpType</span>, <span class="type">Creator</span>&gt;& <span class="function">gCreatorMap</span>();
+};
+            </div>
+            
+            <div class="highlight-box" style="background: rgba(255, 123, 114, 0.1); border-color: rgba(255, 123, 114, 0.3); margin-top: 15px;">
+                <strong style="color: #ff7b72;">Macros like REGISTER_CPU_OP automatically</strong><br>
+                insert into global factory map at static initialization time
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer">7 / 22</div>
+</section>
+
+<!-- Slide 8: Shape Inference Deep Dive -->
+<section class="slide">
+    <h2>Shape Inference System</h2>
+    <p>Static shape computation at model load time for memory efficiency</p>
+    
+    <div class="code-block">
+<span class="comment">// Source: source/shape/ShapeConv.cpp</span>
+<span class="keyword">void</span> <span class="function">ShapeInferenceConv2D</span>(<span class="keyword">const</span> <span class="type">Op</span>* op, 
+                               <span class="keyword">const</span> std::vector&lt;<span class="type">Tensor*</span>&gt;& inputs,
+                               <span class="keyword">const</span> std::vector&lt;<span class="type">Tensor*</span>&gt;& outputs) {
+    <span class="keyword">const</span> <span class="type">Conv2DCommon</span>* common = op-&gt;main_as_Conv2DCommon();
+    <span class="keyword">const</span> <span class="type">Tensor</span>* input = inputs[<span class="number">0</span>];
+    <span class="type">Tensor</span>* output = outputs[<span class="number">0</span>];
+    
+    <span class="comment">// Extract dimensions</span>
+    <span class="keyword">auto</span> inputShape = input-&gt;buffer();
+    <span class="keyword">int</span> batch = inputShape-&gt;dim[<span class="number">0</span>].extent;
+    <span class="keyword">int</span> inChannels = inputShape-&gt;dim[<span class="number">1</span>].extent;
+    <span class="keyword">int</span> inHeight = inputShape-&gt;dim[<span class="number">2</span>].extent;
+    <span class="keyword">int</span> inWidth = inputShape-&gt;dim[<span class="number">3</span>.extent;
+    
+    <span class="comment">// Convolution output formula</span>
+    <span class="keyword">int</span> kernelH = common->kernelY();
+    <span class="keyword">int</span> kernelW = common->kernelX();
+    <span class="keyword">int</span> strideH = common->strideY();
+    <span class="keyword">int</span> strideW = common->strideX();
+    <span class="keyword">int</span> padH = common->padY();
+    <span class="keyword">int</span> padW = common->padX();
+    
+    <span class="keyword">int</span> outHeight = (inHeight + <span class="number">2</span>*padH - kernelH) / strideH + <span class="number">1</span>;
+    <span class="keyword">int</span> outWidth = (inWidth + <span class="number">2</span>*padW - kernelW) / strideW + <span class="number">1</span>;
+    <span class="keyword">int</span> outChannels = common->outputCount();
+    
+    <span class="comment">// Set output shape</span>
+    <span class="keyword">auto</span> outputShape = output->buffer();
+    outputShape->dim[0].extent = batch;
+    outputShape->dim[1].extent = outChannels;
+    outputShape->dim[2].extent = outHeight;
+    outputShape->dim[3].extent = outWidth;
+}
+    </div>
+    
+    <div class="highlight-box" style="margin-top: 20px;">
+        <strong>Key Insight:</strong> Shape inference runs once during model loading, not at every inference. This allows pre-allocation of all tensor memory upfront, eliminating runtime allocation overhead.
+    </div>
+    
+    <div class="two-column" style="margin-top: 20px;">
+        <div class="card">
+            <div class="card-title">Dynamic Shapes</div>
+            <p>While MNN supports dynamic dimensions, shape inference computes the <strong>minimum required</strong> tensor size. Actual runtime dimensions must be within inferred bounds.</p>
+        </div>
+        <div class="card">
+            <div class="card-title">Shape Propagation</div>
+            <p>Inferred shapes propagate through the graph. Downstream ops use upstream output shapes as their input shapes, establishing complete memory requirements.</p>
+        </div>
+    </div>
+    <div class="slide-footer">8 / 22</div>
+</section>
+
+<!-- Slide 9: Geometry Decomposition -->
+<section class="slide">
+    <h2>Geometry Decomposition</h2>
+    <p>Transforming complex ops into optimized computation patterns</p>
+    
+    <div class="code-block" style="border-left-color: #d2a8ff;">
+<span class="comment">// Source: source/geometry/GeometryConv2D.cpp</span>
+<span class="keyword">bool</span> <span class="type">GeometryConv2D</span>::<span class="function">compute</span>() {
+    <span class="comment">// Check if we can fuse Conv+BN+ReLU</span>
+    <span class="keyword">if</span> (mConv2D->opType() == <span class="type">OpType_Conv2D</span> &&
+        mConv2D->bias() != <span class="keyword">nullptr</span> &&
+        mConv2D->activationType() == <span class="type">ActivationType_ReLU</span>) {
+        
+        <span class="comment">// Fuse: single kernel, single memory pass</span>
+        mFusedOp = std::make_unique&lt;<span class="type">FusedConvBNActivation</span>&gt;(...);
+        <span class="keyword">return</span> <span class="keyword">true</span>;
+    }
+    
+    <span class="comment">// Decompose into separate ops</span>
+    <span class="keyword">return</span> <span class="function">computeSeparate</span>();
+}
+    </div>
+    
+    <div class="architecture-diagram" style="margin-top: 25px;">
+        <div class="layer" style="background: rgba(255, 123, 114, 0.1); border-color: rgba(255, 123, 114, 0.3);">
+            <div class="layer-title" style="color: #ff7b72;">Original Graph</div>
+            <div class="code-block" style="background: transparent; border: none; padding: 0; margin: 0;">
+Input → Conv2D → BatchNorm → ReLU → Output
+            </div>
+        </div>
+        
+        <div class="flow-arrow">↓ Geometry Computer ↓</div>
+        
+        <div class="layer" style="background: rgba(126, 231, 135, 0.1); border-color: rgba(126, 231, 135, 0.3);">
+            <div class="layer-title" style="color: #7ee787;">Optimized Graph (Fused)</div>
+            <div class="code-block" style="background: transparent; border: none; padding: 0; margin: 0;">
+Input → FusedConvBatchNormReLU → Output
+            </div>
+        </div>
+    </div>
+    
+    <div class="two-column" style="margin-top: 20px;">
+        <div class="card">
+            <div class="card-title">Benefits of Fusion</div>
+            <ul style="margin-left: 1.2em;">
+                <li>Reduced memory traffic (single read/write)</li>
+                <li>Better cache locality</li>
+                <li>Reduced kernel launch overhead</li>
+                <li>Optimized addressing patterns</li>
+            </ul>
+        </div>
+        <div class="card">
+            <div class="card-title">Supported Fusions</div>
+            <ul style="margin-left: 1.2em;">
+                <li>Conv + BN (+Activation)</li>
+                <li>Conv + DWConv</li>
+                <li>MatMul + Add (Bias)</li>
+                <li>Element-wise sequence ops</li>
+            </ul>
+        </div>
+    </div>
+    <div class="slide-footer">9 / 22</div>
+</section>
+
+<!-- Slide 10: Memory Management -->
+<section class="slide">
+    <h2>Memory Management: BufferAllocator</h2>
+    <p>Centralized memory pool for tensor allocations, minimizing malloc/free overhead</p>
+    
+    <div class="two-column">
+        <div class="card">
+            <div class="code-block">
+<span class="comment">// source/core/BufferAllocator.cpp</span>
+<span class="keyword">class</span> <span class="type">BufferAllocator</span> {
+<span class="keyword">public</span>:
+    <span class="type">Buffer</span> <span class="function">allocate</span>(<span class="keyword">int</span> size, <span class="keyword">int</span> alignment = <span class="number">128</span>) {
+        <span class="comment">// Round up to alignment</span>
+        <span class="keyword">int</span> alignedSize = ((size + alignment - <span class="number">1</span>) / alignment) * alignment;
+        
+        <span class="comment">// Check if we have a free block of sufficient size</span>
+        <span class="keyword">for</span> (<span class="keyword">auto</span>& block : mFreeList) {
+            <span class="keyword">if</span> (block.second >= alignedSize) {
+                <span class="keyword">return</span> <span class="function">splitBlock</span>(block, alignedSize);
+            }
+        }
+        
+        <span class="comment">// Need to allocate more memory</span>
+        <span class="keyword">return</span> <span class="function">allocateMore</span>(alignedSize);
+    }
+    
+    <span class="keyword">void</span> <span class="function">free</span>(<span class="keyword">const</span> <span class="type">Buffer</span>& buffer) {
+        <span class="comment">// Return to free list (coalescing adjacent blocks)</span>
+        mFreeList.insert({buffer.offset, buffer.size});
+        <span class="function">coalesce</span>();
+    }
+    
+<span class="keyword">private</span>:
+    std::map&lt;<span class="keyword">int</span>, <span class="keyword">int</span>&gt; mFreeList;  <span class="comment">// offset → size</span>
+    std::vector&lt;<span class="keyword">void</span>*&gt; mBlocks;       <span class="comment">// allocated memory blocks</span>;
+};
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>Allocation Strategy</h3>
+            <ul>
+                <li><strong>First-fit allocation</strong> from free list</li>
+                <li><strong>Block splitting</strong> for partial allocations</li>
+                <li><strong>Coalescing</strong> adjacent free blocks on free</li>
+                <li><strong>Chunked growth</strong>: allocate in large chunks (e.g., 4MB)</li>
+            </ul>
+            
+            <div class="code-block" style="margin-top: 15px; font-size: 0.9em;">
+<span class="comment">// Tensor allocation path</span>
+Tensor* tensor = <span class="keyword">new</span> Tensor(...);
+tensor-&gt;<span class="function">create</span>(<span class="type">BufferAllocator</span>* allocator) {
+    mBuffer = allocator-&gt;<span class="function">allocate</span>(totalSize);
+    mHost = (float*)mBuffer.data;
+}
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer">10 / 22</div>
+</section>
+
+<!-- Slide 11: LLM Engine Architecture -->
+<section class="slide">
+    <h2>LLM Inference Engine</h2>
+    <p>C++ implementation in transformers/llm/engine/ supporting Llama, Qwen, Baichuan, etc.</p>
+    
+    <div class="two-column">
+        <div class="card">
+            <div class="card-title">📁 Key Files</div>
+            <ul style="margin-left: 1.2em;">
+                <li><code>llm.cpp</code> - Text-only LLM inference</li>
+                <li><code>omni.cpp</code> - Multimodal (vision + audio)</li>
+                <li><code>llm.h</code> - Main inference classes</li>
+                <li><code>kvmodule.hpp</code> - KVCache management</li>
+                <li><code>Sampling.cpp</code> - Token sampling strategies</li>
+            </ul>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">🔑 Core Components</div>
+            <ul style="margin-left: 1.2em;">
+                <li><strong>KVCache:</strong> Cache past key/value tensors</li>
+                <li><strong>Attention:</strong> Multi-head attention with RoPE</li>
+                <li><strong>LMHead:</strong> Final projection to vocab</li>
+                <li><strong>Sampler:</strong> Temperature, top-p, top-k</li>
+                <li><strong>PromptEngine:</strong> Prompt template handling</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="code-block" style="margin-top: 20px; border-left-color: #ffa657;">
+<span class="comment">// Simplified inference loop (llm.cpp)</span>
+<span class="keyword">std</span>::vector&lt;<span class="keyword">int</span>&gt; <span class="type">LLM</span>::<span class="function">response</span>(<span class="keyword">const</span> std::string& prompt) {
+    <span class="comment">// 1. Tokenize prompt</span>
+    <span class="keyword">auto</span> tokens = mTokenizer-&gt;<span class="function">encode</span>(prompt);
+    
+    <span class="comment">// 2. Prefill: process all prompt tokens</span>
+    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; tokens.size() - <span class="number">1</span>; ++i) {
+        <span class="function">forwardOne</span>(tokens[i], mCache);
+    }
+    
+    <span class="comment">// 3. Decode: generate tokens auto-regressively</span>
+    <span class="keyword">int</span> lastToken = tokens.back();
+    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; mMaxNewTokens; ++i) {
+        <span class="function">forwardOne</span>(lastToken, mCache);
+        
+        <span class="keyword">auto</span> logits = <span class="function">getLogits</span>(mCache);
+        lastToken = mSampler-&gt;<span class="function">sample</span>(logits);
+        result.push_back(lastToken);
+        
+        <span class="keyword">if</span> (lastToken == mEosToken) <span class="keyword">break</span>;
+    }
+    
+    <span class="keyword">return</span> mTokenizer-&gt;<span class="function">decode</span>(result);
+}
+    </div>
+    <div class="slide-footer">11 / 22</div>
+</section>
+
+<!-- Slide 12: KVCache Management -->
+<section class="slide">
+    <h2>KVCache: Key-Value Cache</h2>
+    <p>Critical optimization for LLM inference avoiding recomputation of past attention keys/values</p>
+    
+    <div class="two-column">
+        <div>
+            <h3 style="color: #7ee787;">Without KVCache (Naive)</h3>
+            <div class="code-block" style="font-size: 0.9em;">
+<span class="comment">// Each token: recompute ALL previous tokens</span>
+for position = 0 to N:
+    compute Attention(Q, K[0:N], V[0:N])  <span class="comment">// O(N²) grows!</span>
+    
+<span class="type">Time</span> complexity: O(N³) for N tokens
+<span class="type">Memory</span> complexity: O(N) for activations
+            </div>
+        </div>
+        
+        <div>
+            <h3 style="color: #7ee787;">With KVCache (Optimized)</h3>
+            <div class="code-block" style="font-size: 0.9em;">
+<span class="comment">// Cache K[0:N-1], V[0:N-1] after first N tokens</span>
+for position = 0 to N:
+    K[position], V[position] = compute_KV(position)
+    store in cache
+    
+for position = N to M:
+    Attention(Q[position], cacheK[0:position], cacheV[0:position])
+    K[position], V[position] = compute_KV(position)
+    append to cache
+    
+<span class="type">Time</span> complexity: O(N² + N*(M-N)) ≈ O(N*M)
+<span class="type">Memory</span> complexity: O(N) for cache
+            </div>
+        </div>
+    </div>
+    
+    <div class="card" style="margin-top: 20px;">
+        <div class="card-title">🔍 KVCache Implementation Details</div>
+        <div class="code-block" style="font-size: 0.9em; margin-top: 10px;">
+<span class="comment">// kvmodule.hpp: KV cache structure</span>
+<span class="keyword">struct</span> <span class="type">KVCache</span> {
+    <span class="type">Tensor</span> mKey;   <span class="comment">// [numLayers, numHeads, pos, headDim]</span>
+    <span class="type">Tensor</span> mValue; <span class="comment">// [numLayers, numHeads, pos, headDim]</span>
+    <span class="keyword">int</span> mCurPos = <span class="number">0</span>;        <span class="comment">// Current position in cache</span>
+    <span class="keyword">int</span> mMaxPos = <span class="number">4096</span>;    <span class="comment">// Max sequence length</span>
+};
+
+<span class="comment">// On each token:</span>
+<span class="function">forwardOne</span>(token, KVCache& cache) {
+    <span class="comment">// 1. Compute Q, K, V for current token</span>
+    <span class="keyword">auto</span> QKV = mAttention-&gt;<span class="function">computeQKV</span>(token, cache.mCurPos);
+    
+    <span class="comment">// 2. Write K, V to cache (at position mCurPos)</span>
+    cache.mKey-&gt;<span class="function">setTo</span>(QKV.key, cache.mCurPos);
+    cache.mValue-&gt;<span class="function">setTo</span>(QKV.value, cache.mCurPos);
+    
+    <span class="comment">// 3. Attention: read entire cache</span>
+    <span class="keyword">auto</span> attn = <span class="function">computeAttention</span>(QKV.query, cache.mKey, cache.mValue);
+    
+    cache.mCurPos++;  <span class="comment">// Advance position</span>
+}
+        </div>
+    </div>
+    <div class="slide-footer">12 / 22</div>
+</section>
+
+<!-- Slide 13: Winograd Optimization -->
+<section class="slide">
+    <h2>Performance Optimization: Winograd Algorithm</h2>
+    <p>Reduces convolution complexity from O(n²) to ~O(n) for small kernels (3×3, 5×5)</p>
+    
+    <div class="two-column">
+        <div>
+            <h3>Standard Convolution</h3>
+            <div class="code-block">
+<span class="comment">// Output pixel at (i,j):</span>
+for k = 0 to K-1:  <span class="comment">// K = kernel size² × inChannels</span>
+    for c = 0 to C-1:
+        sum += input[i+kH][j+kW][c] * weight[k][c];
+            </div>
+            <p style="margin-top: 10px;"><strong>Complexity:</strong> O(K·C) per output pixel</p>
+            <p><strong>Issue:</strong> High memory access, redundant computation</p>
+        </div>
+        
+        <div>
+            <h3>Winograd Transform</h3>
+            <div class="code-block">
+<span class="comment">// Transform: G * input * G^T  (G = Winograd matrix)</span>
+inputTransformed = G * input * G^T;
+weightTransformed = G * weight * G^T;
+
+<span class="comment">// Element-wise multiply (much faster!)</span>
+outputTransformed = inputTransformed ⊙ weightTransformed;
+
+<span class="comment">// Inverse transform</span>
+output = G^T * outputTransformed * G;
+            </div>
+            <p style="margin-top: 10px;"><strong>Complexity:</strong> O(n) transforms + O(n) multiply</p>
+            <p><strong>Speedup:</strong> 2-3× for 3×3 convolutions</p>
+        </div>
+    </div>
+    
+    <div class="code-block" style="margin-top: 20px; border-left-color: #ffa657;">
+<span class="comment">// Source: source/math/WinogradConv2D.cpp</span>
+<span class="keyword">bool</span> <span class="type">WinogradConv2D</span>::<span class="function">compute</span>() {
+    <span class="keyword">const</span> <span class="keyword">int</span> tileSize = <span class="number">4</span>;  <span class="comment">// 4×4 tiles</span>
+    
+    <span class="keyword">for</span> (<span class="keyword">int</span> y = <span class="number">0</span>; y &lt; outputHeight; y += tileSize) {
+        <span class="keyword">for</span> (<span class="keyword">int</span> x = <span class="number">0</span>; x &lt; outputWidth; x += tileSize) {
+            <span class="comment">// 1. Load input tile (2×2 padding → 4×4 tile)</span>
+            <span class="keyword">auto</span> inputTile = <span class="function">loadInputTile</span>(x, y);
+            
+            <span class="comment">// 2. Transform input & weights</span>
+            <span class="keyword">auto</span> U = <span class="function">transformInput</span>(inputTile);     <span class="comment">// G * input * G^T</span>
+            <span class="keyword">auto</span> V = <span class="function">transformWeights</span>(mWeights);  <span class="comment">// G * weight * G^T</span>
+            
+            <span class="comment">// 3. Point-wise multiply (core Winograd)</span>
+            <span class="keyword">auto</span> M = <span class="function">elementwiseMultiply</span>(U, V);
+            
+            <span class="comment">// 4. Inverse transform</span>
+            <span class="keyword">auto</span> outputTile = <span class="function">inverseTransform</span>(M);
+            
+            <span class="comment">// 5. Store to output</span>
+            <span class="function">storeOutputTile</span>(outputTile, x, y);
+        }
+    }
+}
+    </div>
+    <div class="slide-footer">13 / 22</div>
+</section>
+
+<!-- Slide 14: SIMD Optimizations -->
+<section class="slide">
+    <h2>CPU Backend: SIMD & Assembly Optimizations</h2>
+    <p>Hand-tuned kernels for ARM NEON, x86 SSE/AVX/AVX512</p>
+    
+    <div class="two-column">
+        <div class="card">
+            <div class="card-title">ARM NEON (32-bit & 64-bit)</div>
+            <ul>
+                <li>Float32 & Int8 GEMM</li>
+                <li>Convolution (direct & im2col)</li>
+                               <li>Pooling (max/avg)</li>
+                <li>Activation functions</li>
+                <li>Memory copy/memset</li>
+            </ul>
+            <div class="code-block" style="font-size: 0.85em; margin-top: 10px;">
+<span class="comment">// NEON vector addition (8 floats)</span>
+<span class="keyword">void</span> <span class="function">add_float_neon</span>(<span class="keyword">const</span> <span class="keyword">float</span>* a, <span class="keyword">const</span> <span class="keyword">float</span>* b, 
+                              <span class="keyword">float</span>* c, <span class="keyword">int</span> n) {
+    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; n; i += <span class="number">8</span>) {
+        float32x4_t a0 = vld1q_f32(a + i);
+        float32x4_t b0 = vld1q_f32(b + i);
+        float32x4_t c0 = vaddq_f32(a0, b0);
+        vst1q_f32(c + i, c0);
+        
+        float32x4_t a1 = vld1q_f32(a + i + <span class="number">4</span>);
+        float32x4_t b1 = vld1q_f32(b + i + <span class="number">4</span>);
+        float32x4_t c1 = vaddq_f32(a1, b1);
+        vst1q_f32(c + i + <span class="number">4</span>, c1);
+    }
+}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">x86 SIMD (SSE/AVX/AVX512)</div>
+            <ul>
+                <li>SSE4.1 baseline</li>
+                <li>AVX (256-bit) mainstream</li>
+                <li>AVX512 (512-bit) for HPC</li>
+                <li>VNNI for INT8 dot-product</li>
+                <li>AMX for matrix multiplication</li>
+            </ul>
+            <div class="code-block" style="font-size: 0.85em; margin-top: 10px;">
+<span class="comment">// AVX2: 8 floats per register</span>
+<span class="keyword">void</span> <span class="function">mul_float_avx2</span>(<span class="keyword">const</span> <span class="keyword">float</span>* a, <span class="keyword">const</span> <span class="keyword">float</span>* b,
+                            <span class="keyword">float</span>* c, <span class="keyword">int</span> n) {
+    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; n; i += <span class="number">8</span>) {
+        __m256 a_vec = _mm256_loadu_ps(a + i);
+        __m256 b_vec = _mm256_loadu_ps(b + i);
+        __m256 c_vec = _mm256_mul_ps(a_vec, b_vec);
+        _mm256_storeu_ps(c + i, c_vec);
+    }
+}
+            </div>
+        </div>
+    </div>
+    
+    <div class="highlight-box" style="margin-top: 20px;">
+        <strong>Runtime CPU Detection:</strong> MNN detects CPU capabilities at runtime (OS support for AVX2, NEON, etc.) and selects optimal kernels accordingly.
+    </div>
+    <div class="slide-footer">14 / 22</div>
+</section>
+
+<!-- Slide 15: Quantization -->
+<section class="slide">
+    <h2>Quantization: INT8 & FP16</h2>
+    <p>Reducing model size by 50-75% with minimal accuracy loss</p>
+    
+    <div class="two-column">
+        <div class="card">
+            <div class="card-title">INT8 Quantization</div>
+            <div class="code-block">
+<span class="comment">// Quantization formula</span>
+float -&gt; int8:
+    scale = (max - min) / <span class="number">127</span>
+    zero_point = -round(min / scale)
+    
+    <span class="keyword">int8_t</span> q = round(f / scale) + zero_point;
+
+int8 -&gt; dequantize:
+    float f = (q - zero_point) * scale;
+            </div>
+            <p style="margin-top: 10px;"><strong>Benefits:</strong> 4× smaller, faster integer arithmetic</p>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">FP16 Quantization</div>
+            <div class="code-block">
+<span class="comment">// Half-precision (16-bit float)</span>
+<span class="keyword">struct</span> <span class="type">FP16</span> {
+    <span class="keyword">uint16_t</span> data;
+};
+
+<span class="comment">// Convert FP32 to FP16</span>
+FP16 <span class="function">float_to_fp16</span>(<span class="keyword">float</span> f) {
+    <span class="keyword">uint32_t</span> x = *((<span class="keyword">uint32_t</span>*)&amp;f);
+    <span class="keyword">uint16_t</span> h = ((x &gt;&gt; <span class="number">16</span>) &amp; <span class="number">0x7fff</span>) |
+                      ((x &gt;&gt; <span class="number">16</span> - <span class="number">23</span> + <span class="number">127</span>) &amp; <span class="number">0x8000</span>);
+    <span class="keyword">return</span> *(FP16*)&amp;h;
+}
+            </div>
+            <p style="margin-top: 10px;"><strong>Benefits:</strong> 2× smaller, hardware FP16 support (ARM, GPU)</p>
+        </div>
+    </div>
+    
+    <div class="card" style="margin-top: 20px;">
+        <div class="card-title">⚡ Quantization Workflow</div>
+        <div class="code-block">
+<span class="comment">// 1. Calibration: collect activation ranges</span>
+<span class="keyword">for</span> (<span class="keyword">auto</span>& sample : calibrationDataset) {
+    <span class="keyword">auto</span> activations = model.<span class="function">forward</span>(sample);
+    <span class="keyword">for</span> (<span class="keyword">auto</span>& act : activations) {
+        minVal = std::min(minVal, act.min());
+        maxVal = std::max(maxVal, act.max());
+    }
+}
+
+<span class="comment">// 2. Compute quantization parameters per-layer</span>
+scale = <span class="function">calculateScale</span>(minVal, maxVal, <span class="number">255</span>);
+
+<span class="comment">// 3. Quantize weights (per-channel/ per-tensor)</span>
+quantizedWeights = <span class="function">quantize</span>(weights, scale, zero_point);
+
+<span class="comment">// 4. Insert Quantize/Dequantize ops into graph</span>
+graph = <span class="function">insertQuantOps</span>(graph, scales, zero_points);
+        </div>
+    </div>
+    <div class="slide-footer">15 / 22</div>
+</section>
+
+<!-- Slide 16: Model Conversion -->
+<section class="slide">
+    <h2>Model Conversion Pipeline</h2>
+    <p>tools/converter/ - Convert ONNX, TensorFlow, PyTorch, Caffe → MNN</p>
+    
+    <div class="three-column">
+        <div class="card">
+            <div class="card-title">ONNX</div>
+            <div class="tag">158 OPs</div>
+            <p style="font-size: 0.9em; margin-top: 10px;">
+                <code>ONNXModel.cpp</code><br>
+                ONNX 1.8.0 compatible<br>
+                Static & dynamic shapes
+            </p>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">TensorFlow</div>
+            <div class="tag">178 OPs</div>
+            <p style="font-size: 0.9em; margin-top: 10px;">
+                <code>TFModel.cpp</code><br>
+                SavedModel & frozen<br>
+                Controls flow support
+            </p>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">PyTorch</div>
+            <div class="tag">163 OPs</div>
+            <p style="font-size: 0.9em; margin-top: 10px;">
+                <code>TorchModel.cpp</code><br>
+                Torchscript format<br>
+                JIT trace support
+            </p>
+        </div>
+    </div>
+    
+    <div class="code-block" style="margin-top: 25px; font-size: 0.9em;">
+<span class="comment">// Simplified conversion flow</span>
+<span class="keyword">int</span> <span class="keyword">main</span>(<span class="keyword">int</span> argc, <span class="keyword">char</span>* argv[]) {
+    <span class="comment">// 1. Load source model</span>
+    <span class="keyword">auto</span> model = <span class="type">ONNXModel</span>::<span class="function">create</span>(inputFile);
+    
+    <span class="comment">// 2. Parse graph structure</span>
+    <span class="keyword">auto</span> graph = model-&gt;<span class="function">getGraph</span>();
+    
+    <span class="comment">// 3. Convert ops to MNN schema</span>
+    <span class="keyword">for</span> (<span class="keyword">auto</span>* op : graph-&gt;ops) {
+        <span class="keyword">auto</span> mnnOp = <span class="function">convertOp</span>(op);
+        mnnGraph-&gt;ops.push_back(mnnOp);
+    }
+    
+    <span class="comment">// 4. Shape inference</span>
+    <span class="function">inferShapes</span>(mnnGraph);
+    
+    <span class="comment">// 5. Optimize: constant folding, op fusion</span>
+    mnnGraph = <span class="function">optimizeGraph</span>(mnnGraph);
+    
+    <span class="comment">// 6. Serialize to FlatBuffers</span>
+    <span class="keyword">auto</span> buffer = <span class="function">saveToBuffer</span>(mnnGraph);
+    std::ofstream out(outputFile, std::ios::binary);
+    out.<span class="function">write</span>((<span class="keyword">const</span> <span class="keyword">char</span>*)buffer.data(), buffer.size());
+}
+    </div>
+    <div class="slide-footer">16 / 22</div>
+</section>
+
+<!-- Slide 17: Python Bindings (PyMNN) -->
+<section class="slide">
+    <h2>Python Bindings: PyMNN</h2>
+    <p>Python API for easy integration with ML workflows</p>
+    
+    <div class="two-column">
+        <div>
+            <h3>Key Modules</h3>
+            <ul style="margin-left: 1.2em;">
+                <li><code>MNN</code> - Core Interpreter & Session</li>
+                <li><code>MNN.expr</code> - Express (dynamic graph)</li>
+                <li><code>MNN.nn</code> - Neural network layers</li>
+                <li><code>MNN.optim</code> - Optimizers</li>
+                <li><code>MNN.data</code> - Data loaders</li>
+                <li><code>MNN.Var</code> - Tensor wrapper</li>
+            </ul>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">🐍 Python Usage</div>
+            <div class="code-block">
+<span class="keyword">import</span> MNN
+<span class="keyword">import</span> MNN.expr <span class="keyword">as</span> expr
+
+<span class="comment"># Load model</span>
+net = MNN.Interpreter.<span class="function">createFromFile</span>(<span class="string">"model.mnn"</span>)
+
+<span class="comment"># Create session</span>
+config = MNN.SessionConfig()
+session = net.<span class="function">createSession</span>(config)
+
+<span class="comment"># Get input/output</span>
+inputTensor = net.<span class="function">getSessionInput</span>(session)
+outputTensor = net.<span class="function">getSessionOutput</span>(session)
+
+<span class="comment"># Set input data (numpy array)</span>
+inputTensor.<span class="function">fromNumpy</span>(data)
+
+<span class="comment"># Run inference</span>
+net.<span class="function">runSession</span>(session)
+
+<span class="comment"># Get result</span>
+result = outputTensor.<span class="function">getNumpyData</span>()
+            </div>
+        </div>
+    </div>
+    
+    <div class="card" style="margin-top: 20px;">
+        <div class="card-title">🔄 Dynamic Graph (Express API)</div>
+        <div class="code-block">
+<span class="comment"># Build model programmatically</span>
+x = expr.<span class="function">placeholder</span>([<span class="number">1</span>, <span class="number">3</span>, <span class="number">224</span>, <span class="number">224</span>])
+w = expr.<span class="function">parameter</span>([<span class="number">64</span>, <span class="number">3</span>, <span class="number">3</span>, <span class="number">3</span>])
+y = expr.<span class="function">conv</span>(x, w)
+y = expr.<span class="function">relu</span>(y)
+
+<span class="comment"># Compile and run</span>
+module = expr.<span class="function">Module</span>.create(y, [x])
+module.<span class="function">run</span>([input_data])
+        </div>
+    </div>
+    <div class="slide-footer">17 / 22</div>
+</section>
+
+<!-- Slide 18: Performance Tips -->
+<section class="slide">
+    <h2>Performance Optimization Checklist</h2>
+    <p>Best practices for getting the most out of MNN</p>
+    
+    <div class="two-column">
+        <div class="card">
+            <div class="card-title">Model-Level</div>
+            <ul>
+                <li>Use fixed input sizes (<code>MNN_BUILD_MINI</code>)</li>
+                <li>Fuse ops during conversion (--optimize)</li>
+                <li>Quantize to INT8 for CPU, FP16 for GPU</li>
+                <li>Prefer depthwise conv over standard conv</li>
+                <li>Minimize memory allocations (reuse tensors)</li>
+            </ul>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">Runtime-Level</div>
+            <ul>
+                <li>Set <code>numThread</code> to CPU core count</li>
+                <li>Prefer <code>MNN_FORWARD_CPU</code> for CPU-bound</li>
+                <li>Use <code>NC4HW4</code> layout for convolutions</li>
+                <li>Reuse sessions for multiple inferences</li>
+                <li>Enable <code>MNN_USE_GEMM</code> for FC layers</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="two-column" style="margin-top: 20px;">
+        <div class="card">
+            <div class="card-title">Backend-Specific</div>
+            <ul>
+                <li><strong>CPU:</strong> AVX2, NEON enable → big speedup</li>
+                <li><strong>Metal:</strong> Use MNN_METAL=ON, shared buffer</li>
+                <li><strong>OpenCL:</strong> Tune work-group size</li>
+                <li><strong>Vulkan:</strong> Use VMA-like memory allocator</li>
+                <li><strong>Quant:</strong> Deploy with <code>mnnquant</code> tools</li>
+            </ul>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">Memory</div>
+            <ul>
+                <li>Avoid tensor copies (use <code>copyFromHostTensor</code>)</li>
+                <li>Pin host memory for GPU transfers</li>
+                <li>Batch inference for throughput</li>
+                <li>Use <code>Session::releaseModel</code> to free memory</li>
+                <li>Profile with <code>MNN_DEBUG=1</code></li>
+            </ul>
+        </div>
+    </div>
+    <div class="slide-footer">18 / 22</div>
+</section>
+
+<!-- Slide 19: Build Configuration -->
+<section class="slide">
+    <h2>CMake Build Options</h2>
+    <p>Fine-grained control over build components and optimizations</p>
+    
+    <div class="two-column">
+        <div class="card">
+            <div class="card-title">Core Options</div>
+            <pre style="margin: 10px 0; font-size: 0.9em; line-height: 1.6;">
+-DMNN_BUILD_TEST=ON          # Build tests
+-DMNN_BUILD_CONVERTER=ON     # Model converter
+-DMNN_BUILD_LLM=ON           # LLM support
+-DMNN_BUILD_MINI=ON          # Minimal binary (~25% smaller)
+-DMNN_LOW_MEMORY=ON          # Reduce memory usage
+-DMNN_USE_GEMM=ON            # Use GEMM for FC layers
+            </pre>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">Backend Options</div>
+            <pre style="margin: 10px 0; font-size: 0.9em; line-height: 1.6;">
+-DMNN_ARM82=ON               # ARMv8.2 (dotprod)
+-DMNN_MMAV2=ON              # ARM SVE (future)
+-DMNN_METAL=ON              # iOS Metal
+-DMNN_OPENCL=ON             # OpenCL backend
+-DMNN_VULKAN=ON             # Vulkan backend
+-DMNN_CUDA=ON               # NVIDIA CUDA
+-DMNN_HIAI=ON               # Huawei HiAI
+-DMNN_NNAPI=ON              # Android NNAPI
+            </pre>
+        </div>
+    </div>
+    
+    <div class="card" style="margin-top: 20px;">
+        <div class="card-title🔧 Typical Build Commands</div>
+        <div class="code-block">
+<span class="comment"># Full featured (for development)</span>
+cmake .. -DMNN_BUILD_TEST=ON -DMNN_BUILD_CONVERTER=ON \
+         -DMNN_BUILD_LLM=ON -DMNN_OPENCL=ON -DMNN_VULKAN=ON
+
+<span class="comment"># Mobile-optimized (production)</span>
+cmake .. -DMNN_BUILD_MINI=ON -DMNN_LOW_MEMORY=ON \
+         -DMNN_ARM82=ON -DMNN_METAL=ON
+
+<span class="comment"># Custom CPU optimizations</span>
+cmake .. -DMNN_USE_GEMM=ON -DMNN_AVX512=ON -DMNN_ARM82=ON
+        </div>
+    </div>
+    <div class="slide-footer">19 / 22</div>
+</section>
+
+<!-- Slide 20: Testing & Benchmarking -->
+<section class="slide">
+    <h2>Testing & Benchmarking</h2>
+    <p>Comprehensive test suite and performance evaluation tools</p>
+    
+    <div class="two-column">
+        <div class="card">
+            <div class="card-title">🧪 Unit Tests</div>
+            <div class="code-block">
+cd build &amp;&amp; ./run_test.out
+
+<span class="comment"># Test coverage includes:</span>
+- Op correctness (forward/backward)
+- Shape inference
+- Memory allocation
+- Backend equivalence
+- Quantization accuracy
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">📊 Model Tests</div>
+            <div class="code-block">
+./testModel model.mnn input.json
+
+<span class="comment"># Validates:</span>
+- Model loading
+- Inference correctness
+- Output shape & range
+- Multi-input models
+            </div>
+        </div>
+    </div>
+    
+    <div class="two-column" style="margin-top: 20px;">
+        <div class="card">
+            <div class="card-title">⚡ Benchmarking</div>
+            <div class="code-block">
+./llm_bench -m config.json
+./benchmark --model=model.mnn \
+            --iterations=1000 \
+            --warmup=100
+
+<span class="comment"># Reports:</span>
+- Latency (p50, p99)
+- Throughput (FPS)
+- Memory usage
+- Per-op breakdown
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">🎯 Accuracy Validation</div>
+            <div class="code-block">
+python tools/evaluation/evaluate.py \
+    --model model.mnn \
+    --dataset calib_{1k,10k} \
+    --metrics top1,top5,mAP
+
+<span class="comment"># Checks:</span>
+- Numeric errors vs reference
+- Quantization impact
+- Dynamic range coverage
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer">20 / 22</div>
+</section>
+
+<!-- Slide 21: LLM Export (Python) -->
+<section class="slide">
+    <h2>LLM Export: HuggingFace → MNN</h2>
+    <p>Python export pipeline in transformers/llm/export/</p>
+    
+    <div class="code-block" style="font-size: 0.9em;">
+<span class="comment"># Export command</span>
+python llmexport.py \
+    --path /path/to/huggingface/model \
+    --export mnn \
+    --hqq \                            <span class="comment"># HQQ quantization</span>
+    --dst_path ./model
+
+<span class="comment"># Internals (simplified):</span>
+class LlmModel:
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, config):
+        self.embedding = <span class="type">EmbeddingLayer</span>()
+        self.layers = [<span class="type">TransformerBlock</span>()] * N
+        self.lm_head = <span class="type">Linear</span>()
+        
+    <span class="keyword">def</span> <span class="function">forward</span>(self, tokens, cache):
+        <span class="comment"># 1. Token embeddings</span>
+        hidden = self.embedding(tokens)
+        
+        <span class="comment"># 2. Transformer layers with KVCache</span>
+        <span class="keyword">for</span> layer in self.layers:
+            hidden, new_cache = layer(hidden, cache)
+            cache.<span class="function">append</span>(new_cache)
+        
+        <span class="comment"># 3. LM head</span>
+        logits = self.lm_head(hidden)
+        <span class="keyword">return</span> logits, cache
+
+<span class="comment"># Exporter (utils/model_mapper.py)</span>
+<span class="keyword">def</span> <span class="function">map_state_dict</span>(hf_state_dict):
+    <span class="comment"># HuggingFace → MNN key mapping</span>
+    mapping = {
+        <span class="string">'model.layers.{i}.self_attn.q_proj.weight'</span>: 
+            <span class="string">'layer_{i}.attn_q.weight'</span>,
+        <span class="comment"># ...</span>
+    }
+    <span class="keyword">return</span> <span class="function">rename</span>(hf_state_dict, mapping)
+    </div>
+    
+    <div class="highlight-box" style="margin-top: 20px;">
+        <strong>Supported Models:</strong> Llama 2/3, Qwen, Baichuan, ChatGLM, Mistral, Gemma, Phi-2, etc.
+    </div>
+    <div class="slide-footer">21 / 22</div>
+</section>
+
+<!-- Slide 22: Summary -->
+<section class="slide">
+    <h2>Key Takeaways</h2>
+    <div class="architecture-diagram">
+        <div class="layer">
+            <div class="layer-title">🎯 Design Philosophy</div>
+            <ul style="text-align: left; margin: 10px 0 0 30px; color: #c9d1d9;">
+                <li><strong>Modularity:</strong> Clean separation of concerns across 9 modules</li>
+                <li><strong>Performance:</strong> SIMD, Winograd, KVCache, memory pool</li>
+                <li><strong>Portability:</strong> Unified backend abstraction, multi-OS support</li>
+                <li><strong>Extensibility:</strong> Plugin system, custom ops, easy backend addition</li>
+            </ul>
+        </div>
+        
+        <div class="flow-arrow">↓</div>
+        
+        <div class="layer">
+            <div class="layer-title">🚀 Core Strengths</div>
+            <ul style="text-align: left; margin: 10px 0 0 30px; color: #c9d1d9;">
+                <li><strong>Lightweight binary:</strong> ~800KB core, <strong>~12MB</strong> full static lib</li>
+                <li><strong>Multi-backend:</strong> CPU/GPU/NPU with runtime selection</li>
+                <li><strong>LLM-ready:</strong> Production LLM inference with KVCache</li>
+                <li><strong>Quantization:</strong> INT8/FP16 support for efficiency</li>
+                <li><strong>Battle-tested:</strong> 30+ Alibaba apps, 70+ scenarios</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 40px; padding: 25px; background: rgba(88, 166, 255, 0.1); border-radius: 10px;">
+        <h3 style="color: #58a6ff; margin-bottom: 15px;">Production-Grade Inference Engine</h3>
+        <p style="font-size: 1.2em; max-width: 800px; margin: 0 auto; color: #c9d1d9;">
+            MNN represents a mature, high-performance solution for deploying deep learning models on resource-constrained devices,
+            combining sophisticated optimizations (NC4HW4, Winograd, KVCache) with a clean, extensible architecture.
+        </p>
+    </div>
+    
+    <div class="slide-footer">22 / 22</div>
+</section>
+
+<!-- Navigation -->
+<div class="nav-hint">← → Arrow keys | Space: forward | B: back | Home/End: first/last</div>
+<div class="progress-dots" id="progressDots"></div>
+
+<script>
+    const slides = document.querySelectorAll('.slide');
+    let currentSlide = 0;
+    const totalSlides = slides.length;
+    
+    // Create progress dots
+    const dotsContainer = document.getElementById('progressDots');
+    for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'dot' + (i === 0 ? ' active' : '');
+        dot.onclick = () => showSlide(i);
+        dotsContainer.appendChild(dot);
+    }
+    
+    function showSlide(index) {
+        slides.forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
+        
+        currentSlide = (index + totalSlides) % totalSlides;
+        slides[currentSlide].classList.add('active');
+        document.querySelectorAll('.dot')[currentSlide].classList.add('active');
+    }
+    
+    function nextSlide() { showSlide(currentSlide + 1); }
+    function prevSlide() { showSlide(currentSlide - 1); }
+    function firstSlide() { showSlide(0); }
+    function lastSlide() { showSlide(totalSlides - 1); }
+    
+    document.addEventListener('keydown', (e) => {
+        switch(e.key) {
+            case 'ArrowRight':
+            case ' ':
+            case 'ArrowDown':
+                e.preventDefault();
+                nextSlide();
+                break;
+            case 'ArrowLeft':
+            case 'ArrowUp':
+                e.preventDefault();
+                prevSlide();
+                break;
+            case 'Home':
+                e.preventDefault();
+                firstSlide();
+                break;
+            case 'End':
+                e.preventDefault();
+                lastSlide();
+                break;
+        }
+    });
+    
+    // Initialize
+    showSlide(0);
+</script>
+
+</body>
+</html>
