@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNN 代码架构幻灯片</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; }
+        .slide { width: 100vw; height: 100vh; padding: 60px; display: flex; flex-direction: column; justify-content: center; align-items: center; page-break-after: always; }
+        .slide:nth-child(odd) { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
+        .slide:nth-child(even) { background: linear-gradient(135deg, #16213e 0%, #0f3460 100%); }
+        h1 { font-size: 3em; margin-bottom: 40px; color: #00d4ff; text-align: center; }
+        h2 { font-size: 2.2em; margin-bottom: 30px; color: #e94560; }
+        h3 { font-size: 1.5em; margin-bottom: 20px; color: #f39c12; }
+        p, li { font-size: 1.3em; line-height: 1.8; }
+        ul { text-align: left; margin-left: 40px; }
+        .highlight { color: #00d4ff; font-weight: bold; }
+        .code-box { background: #0d1117; border-radius: 10px; padding: 20px; margin: 20px 0; border-left: 4px solid #e94560; font-family: 'Consolas', monospace; font-size: 0.9em; overflow-x: auto; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; width: 100%; max-width: 1200px; }
+        .card { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 25px; text-align: center; transition: transform 0.3s; }
+        .card:hover { transform: scale(1.05); }
+        .card h4 { color: #00d4ff; margin-bottom: 10px; font-size: 1.4em; }
+        .card p { font-size: 1em; color: #aaa; }
+        .arrow { color: #e94560; font-size: 2em; margin: 0 20px; }
+        .row { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
+        .layer { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px 40px; border-radius: 10px; margin: 10px; text-align: center; min-width: 150px; }
+        .layer.green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .layer.orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .layer.blue { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .layer.yellow { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .slide-num { position: absolute; bottom: 20px; right: 30px; font-size: 1em; color: #666; }
+        .title-slide h1 { font-size: 4em; }
+        .subtitle { font-size: 1.5em; color: #aaa; margin-top: 20px; }
+        .diagram { background: #0d1117; border-radius: 15px; padding: 30px; margin: 20px 0; width: 100%; max-width: 1000px; }
+        .pipe { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; }
+        .pipe-node { background: #2d3748; padding: 15px 25px; border-radius: 8px; margin: 5px; border: 2px solid #4a5568; }
+        .pipe-arrow { color: #00d4ff; margin: 0 10px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #333; }
+        th { color: #00d4ff; font-size: 1.2em; }
+        td:first-child { color: #f39c12; font-weight: bold; }
+        @media print { .slide { page-break-after: always; } }
+    </style>
+</head>
+<body>
+
+<!-- Slide 1: 标题页 -->
+<div class="slide title-slide">
+    <h1>MNN 代码架构</h1>
+    <p class="subtitle">Mobile Neural Network 轻量级深度学习推理引擎</p>
+    <p style="margin-top: 40px; color: #888;">CNN / Transformer / LLM / Diffusion</p>
+</div>
+
+<!-- Slide 2: 项目概览 -->
+<div class="slide">
+    <h1>项目概览</h1>
+    <div class="grid">
+        <div class="card">
+            <h4>定位</h4>
+            <p>移动端 & 服务端轻量级深度学习推理引擎（非训练框架）</p>
+        </div>
+        <div class="card">
+            <h4>核心架构</h4>
+            <p>图优化 + 异构后端调度</p>
+        </div>
+        <div class="card">
+            <h4>两套 API</h4>
+            <p>Session API (底层) + Module API (高层，推荐)</p>
+        </div>
+        <div class="card">
+            <h4>硬件支持</h4>
+            <p>CPU / Metal / CUDA / OpenCL / Vulkan / ARM82</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 3: 目录结构 -->
+<div class="slide">
+    <h1>代码目录结构</h1>
+    <table>
+        <tr><th>目录</th><th>描述</th></tr>
+        <tr><td>source/core/</td><td>推理核心 (Interpreter, Session, Pipeline, Backend)</td></tr>
+        <tr><td>source/backend/</td><td>硬件后端实现 (cpu, metal, cuda, opencl, vulkan...)</td></tr>
+        <tr><td>source/geometry/</td><td>几何计算 (算子分解)</td></tr>
+        <tr><td>source/shape/</td><td>Shape 推导</td></tr>
+        <tr><td>express/</td><td>Express API (动态图, VARP)</td></tr>
+        <tr><td>schema/</td><td>FlatBuffers 算子定义</td></tr>
+        <tr><td>tools/converter/</td><td>模型转换器 (ONNX/TF/Caffe → MNN)</td></tr>
+        <tr><td>transformers/llm/</td><td>LLM 导出 + 推理引擎</td></tr>
+        <tr><td>include/MNN/</td><td>公共 C++ 头文件</td></tr>
+    </table>
+</div>
+
+<!-- Slide 4: 核心抽象 -->
+<div class="slide">
+    <h1>核心抽象层</h1>
+    <div class="diagram">
+        <div class="pipe">
+            <div class="pipe-node" style="border-color:#00d4ff">Interpreter</div>
+            <span class="pipe-arrow">→</span>
+            <div class="pipe-node" style="border-color:#e94560">Session</div>
+            <span class="pipe-arrow">→</span>
+            <div class="pipe-node" style="border-color:#f39c12">Backend</div>
+            <span class="pipe-arrow">→</span>
+            <div class="pipe-node" style="border-color:#38ef7d">Execution</div>
+        </div>
+        <div style="margin-top:40px; text-align:center; color:#888;">
+            <p>Tensor (数据容器, 内部 NC4HW4 格式)</p>
+            <p>Op / Schema (FlatBuffers 算子描述)</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 5: Session API -->
+<div class="slide">
+    <h1>Session API (底层)</h1>
+    <p style="text-align:center; margin-bottom:30px;">操作 Tensor，直接控制推理过程</p>
+    <div class="code-box">
+<pre>// 使用流程
+Interpreter *interpreter = Interpreter::createFromFile(modelPath);
+Session *session = interpreter->createSession(sessionConfig);
+
+// 输入
+auto input = session->getInput("input_name");
+input->copyFromHostTensor(hostTensor);
+
+// 执行
+session->runSession();
+
+// 输出
+auto output = session->getOutput("output_name");
+output->copyToHostTensor(result);
+
+interpreter->releaseSession(session);
+delete interpreter;</pre>
+    </div>
+</div>
+
+<!-- Slide 6: Module API -->
+<div class="slide">
+    <h1>Module API (高层)</h1>
+    <p style="text-align:center; margin-bottom:30px;">Express-based 动态图，推荐用于 LLM / Diffusion</p>
+    <div class="code-box">
+<pre>// 使用流程
+Module::load(loadCache, size, "", "");  // 加载模型
+
+VARP input = _Input({batch, seq}, NCHW);
+VARP output = module->forward(input);
+
+// 自动构图、自动调度
+std::vector<float> result = output->readMap<float>();</pre>
+    </div>
+    <div class="row" style="margin-top:30px;">
+        <div class="layer">VARP</div>
+        <span class="arrow">→</span>
+        <div class="layer green">Express</div>
+        <span class="arrow">→</span>
+        <div class="layer orange">Session</div>
+    </div>
+</div>
+
+<!-- Slide 7: Backend 架构 -->
+<div class="slide">
+    <h1>Backend 架构</h1>
+    <div class="grid">
+        <div class="card">
+            <h4>CPU Backend</h4>
+            <p>通用实现，ARM/x86 优化</p>
+        </div>
+        <div class="card">
+            <h4>Metal Backend</h4>
+            <p>Apple GPU (iOS/macOS)</p>
+        </div>
+        <div class="card">
+            <h4>CUDA Backend</h4>
+            <p>NVIDIA GPU</p>
+        </div>
+        <div class="card">
+            <h4>OpenCL Backend</h4>
+            <p>通用 GPU</p>
+        </div>
+        <div class="card">
+            <h4>Vulkan Backend</h4>
+            <p>现代 GPU API</p>
+        </div>
+        <div class="card">
+            <h4>ARM82 Backend</h4>
+            <p>ARMv8.2 加速</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 8: Op 注册模式 -->
+<div class="slide">
+    <h1>Op 注册模式</h1>
+    <div class="row">
+        <div class="layer">Schema 定义</div>
+        <span class="arrow">→</span>
+        <div class="layer green">Shape 推导</div>
+        <span class="arrow">→</span>
+        <div class="layer orange">Geometry 分解</div>
+        <span class="arrow">→</span>
+        <div class="layer blue">Execution 实现</div>
+    </div>
+    <div class="code-box" style="margin-top:30px;">
+<pre>// 1. schema/default/*.fbs 定义算子
+table Conv2d {
+    kernelN: int;
+    kernelM: int;
+    strides: [int];
+    pads: [int];
+    activationType: ActivationType;
+}
+
+// 2. source/shape/ShapeConvolution.cpp
+// 3. source/geometry/GeometryConvolution.cpp
+// 4. source/backend/cpu/Convolution.cpp</pre>
+    </div>
+</div>
+
+<!-- Slide 9: LLM 子系统 -->
+<div class="slide">
+    <h1>LLM 子系统</h1>
+    <div class="grid">
+        <div class="card" style="border:2px solid #e94560;">
+            <h4>导出 (Python)</h4>
+            <p>transformers/llm/export/</p>
+            <p style="font-size:0.85em; margin-top:10px;">HuggingFace → MNN 格式</p>
+        </div>
+        <div class="card" style="border:2px solid #00d4ff;">
+            <h4>推理 (C++)</h4>
+            <p>transformers/llm/engine/</p>
+            <p style="font-size:0.85em; margin-top:10px;">llm.cpp, omni.cpp</p>
+        </div>
+    </div>
+    <div class="row" style="margin-top:30px;">
+        <div class="layer">llmexport.py</div>
+        <span class="arrow">→</span>
+        <div class="layer green">model_mapper.py</div>
+        <span class="arrow">→</span>
+        <div class="layer orange">transformers.py</div>
+        <span class="arrow">→</span>
+        <div class="layer blue">MNN Model</div>
+    </div>
+</div>
+
+<!-- Slide 10: 模型转换流程 -->
+<div class="slide">
+    <h1>模型转换流程</h1>
+    <div class="row">
+        <div class="layer">ONNX</div>
+        <span class="arrow">→</span>
+        <div class="layer">TensorFlow</div>
+        <span class="arrow">→</span>
+        <div class="layer">Caffe</div>
+        <span class="arrow">→</span>
+        <div class="layer blue">Converter</div>
+        <span class="arrow">→</span>
+        <div class="layer green">MNN Model</div>
+    </div>
+    <div class="code-box">
+<pre>// tools/converter/ 目录结构
+converter/
+├── onnx/
+├── tf/
+├── caffe/
+├── tflite/
+├── torch/
+└── converter.cpp  // 主入口</pre>
+    </div>
+</div>
+
+<!-- Slide 11: 关键文件 -->
+<div class="slide">
+    <h1>关键文件索引</h1>
+    <table>
+        <tr><th>功能</th><th>路径</th></tr>
+        <tr><td>Interpreter</td><td>source/core/Interpreter.cpp</td></tr>
+        <tr><td>Session</td><td>source/core/Session.cpp</td></tr>
+        <tr><td>Backend</td><td>source/core/Backend.cpp</td></tr>
+        <tr><td>Tensor</td><td>source/core/Tensor.cpp</td></tr>
+        <tr><td>Express VARP</td><td>express/Express.cpp</td></tr>
+        <tr><td>LLM 推理</td><td>transformers/llm/engine/llm.cpp</td></tr>
+        <tr><td>多模态</td><td>transformers/llm/engine/omni.cpp</td></tr>
+        <tr><td>Op Schema</td><td>schema/default/*.fbs</td></tr>
+    </table>
+</div>
+
+<!-- Slide 12: 结束页 -->
+<div class="slide title-slide">
+    <h1>谢谢</h1>
+    <p class="subtitle">MNN - 轻量级高性能深度学习推理引擎</p>
+    <p style="margin-top:40px; color:#666;">GitHub: alibaba/MNN</p>
+</div>
+
+</body>
+</html>
